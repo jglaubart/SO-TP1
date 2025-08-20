@@ -35,11 +35,7 @@ clean:
 docker-build:
 	docker exec -it $(CONT) bash -lc "cd $(CONT_DIR) && make clean && make inner-build"
 
-
 run:
-	docker exec -it $(CONT) bash -lc "cd $(CONT_DIR)/src/ && ./masterCatedra -w 10 -h 10 -d 200 -t 10 -p ./player ./player ./player"
-
-run-view:
 	docker exec -it $(CONT) bash -lc "cd $(CONT_DIR)/src && ./masterCatedra -w 10 -h 10 -d 200 -t 10 -v ./view -p ./player ./player ./player"
 
 .PHONY: all inner-build clean docker-build run run-view

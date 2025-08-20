@@ -175,7 +175,7 @@ static void render_board_and_stats(void) {
     refresh();
 }
 
-
+//------------- main -----------------------
 int main(int argc, char **argv) {
     // master nos pasa width/height como argv[1], argv[2]; no los necesitamos acá
     (void)argc; (void)argv;
