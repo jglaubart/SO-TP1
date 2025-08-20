@@ -68,3 +68,10 @@ ls -l
 ./ChompChamps -p j1 j2 j3
 ./ChompChamps -p j1 j2 j3
 exit
+ls
+cd root
+ls
+cd src
+gcc -std=c11 -Wall -Wextra -Werror -O2 -o player player.c -pthread
+gcc -std=c11 -Wall -Wextra -Werror -O2 -o player player.c -pthread
+exit

@@ -1,57 +1,19 @@
 // player.c
+#define _DEFAULT_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <stdarg.h>
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
-#include <sys/types.h>
-#include <semaphore.h>
 #include <errno.h>
+#include "structs.h"
 
 //memorias compartidas
 #define SHM_STATE "/game_state"
 #define SHM_SYNC  "/game_sync"
-
-typedef struct {
-    char name[16];              // nombre del jugador
-    unsigned int score;         // puntaje
-    unsigned int invalid_moves; // movimientos inválidos realizados
-    unsigned int valid_moves;   // movimientos válidos realizados
-    unsigned short x, y;        // coordenadas actuales
-    pid_t pid;                  // pid del proceso jugador
-    bool blocked;               // bloqueado (EOF en su pipe)
-} player_t;
-
-typedef struct {
-    unsigned short width;       // ancho
-    unsigned short height;      // alto
-    unsigned int num_players;   // cantidad de jugadores (<= 9)
-    player_t players[9];        // jugadores
-    bool finished;              // juego finalizado
-    int board[];                // tablero: fila-0, fila-1, ..., fila-(h-1)
-} game_state_t;
-
-// ZZZ (sincronización) en /game_sync:
-// A: master -> view (hay cambios)
-// B: view -> master (impresión lista)
-// C: turnstile para evitar inanición del escritor (master)
-// D: mutex de acceso de escritores al estado
-// E: mutex del contador de lectores
-// F: contador de lectores activos
-// G[i]: permiso a cada jugador para enviar 1 movimiento
-typedef struct {
-    sem_t A;
-    sem_t B;
-    sem_t C;
-    sem_t D;
-    sem_t E;
-    unsigned int F;
-    sem_t G[9];
-} game_sync_t;
 
 //punteros a memorias compartidas
 static game_state_t *gs = NULL;
@@ -136,7 +98,7 @@ static inline bool cell_is_taken(int v) { return v <= 0; }        // 0..-8 (capt
         if (!in_bounds(nx, ny)) continue;
 
         int v = gs->board[idx(nx, ny)];
-        if (v <= 0) continue;  // solo celdas libres con recompensa 1..9 (válidas)
+        if (cell_is_taken(v)) continue;  // solo celdas libres con recompensa 1..9 (válidas)
         // si es peor que lo mejor visto, ni calculo free_n
         if (v < best_reward) continue;
 
@@ -146,7 +108,7 @@ static inline bool cell_is_taken(int v) { return v <= 0; }        // 0..-8 (capt
             int mx = nx + DX[k], my = ny + DY[k];
             if (!in_bounds(mx, my)) continue;
             int mv = gs->board[idx(mx, my)];
-            if (mv > 0) free_n++;
+            if (cell_is_free_reward(mv)) free_n++;
         }
 
         // criterio: mayor reward; si empata, mayor free_n
@@ -200,7 +162,7 @@ int main(int argc, char **argv) {
         reader_enter();
         myi = my_index_by_pid(me);
         reader_exit();
-        if (myi < 0) sleep(1000);
+        if (myi < 0) usleep(1000);
     }
     if (myi < 0) die("no encontré mi pid en game_state");
 
