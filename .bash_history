@@ -75,3 +75,46 @@ cd src
 gcc -std=c11 -Wall -Wextra -Werror -O2 -o player player.c -pthread
 gcc -std=c11 -Wall -Wextra -Werror -O2 -o player player.c -pthread
 exit
+ls
+cd root
+ls
+apt-get update && apt-get install -y valgrind
+valgrind --leak-check=full ./player 10 10
+valgrind --leak-check=full ./masterCatedra -w 10 -h 10 -d 200 -t 10 -p ./player ./player
+ls
+cd src
+valgrind --leak-check=full ./player 10 10
+valgrind --leak-check=full ./masterCatedra -w 10 -h 10 -d 200 -t 10 -p ./player ./player
+cd ..
+apt-get install -y pvs-studio
+pvs-studio-analyzer --version
+wget -q -O - https://files.viva64.com/etc/pubkey.txt | apt-key add -
+echo "deb http://repo.viva64.com/stable/deb/debian $(lsb_release -cs) main" > /etc/apt/sources.list.d/viva64.list
+apt-get update
+wget -q -O - https://files.viva64.com/etc/pubkey.txt | apt-key add -
+echo "deb http://repo.viva64.com/stable/deb/debian $(lsb_release -cs) main" > /etc/apt/sources.list.d/viva64.list
+apt-get update
+apt-get install -y pvs-studio
+clear
+rm -f /etc/apt/sources.list.d/viva64.list
+apt-get update
+apt-get install -y gnupg ca-certificates wget lsb-release
+wget -q -O - https://files.viva64.com/etc/pubkey.txt | gpg --dearmor -o /usr/share/keyrings/pvs.gpg
+. /etc/os-release
+echo "deb [signed-by=/usr/share/keyrings/pvs.gpg] http://repo.viva64.com/stable/deb/debian $VERSION_CODENAME main" > /etc/apt/sources.list.d/viva64.list
+apt-get update
+exit
+ls
+cd root
+ls
+cd ..
+exit
+apt-get update
+apt-get install -y libncurses-dev
+exit
+make clean
+cd root
+make clean
+make inner-build
+exir
+exit

@@ -1,45 +1,45 @@
 # === Imagen obligatoria de la cátedra ===
 IMG      := agodio/itba-so-multi-platform:3.0
-CONT_DIR := /SO-TP1
+CONT     := SO                     # nombre de tu contenedor persistente
+CONT_DIR := /root
 HOST_DIR := $(shell pwd)
 
-# === Flags de compilación (dentro del contenedor) ===
+# === Flags de compilación ===
 CC      := gcc
 CFLAGS  := -std=c11 -Wall -Wextra -Werror -O2
-LDFLAGS := -pthread
+LDFLAGS := -pthread -lncurses
 
-TARGETS := player
-# TARGETS := master view player
+#agregar master cuando se haga
+TARGETS := src/player src/view
 
+# Por defecto: compilar en el contenedor persistente
 all: docker-build
 
-docker-pull:
-	@docker pull $(IMG) >/dev/null
-
-docker-build: docker-pull
-	@docker run --rm -v "$(HOST_DIR):$(CONT_DIR)" -w "$(CONT_DIR)" $(IMG) \
-		bash -lc 'make -s clean && make -s inner-build'
-
-# === Compilación "interna" (se ejecuta dentro del contenedor) ===
+# Compilación dentro del contenedor persistente
 inner-build: $(TARGETS)
 
-# --- Destapar cuando existan esos archivos ---
-# master: src/master.c
-# 	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
-#
-# view: src/view.c
-# 	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
-
-player: src/player.c
+src/view: src/view.c
 	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
 
+src/player: src/player.c
+	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
+
+# --- Destapar cuando existan esos archivos ---
+# src/master: src/master.c
+#	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
+
 clean:
-	rm -f master view player
+	rm -f src/player src/view src/master
 
-#---- esto es para que se ejecute en docker, se hace automaticamente con 3 players ----#
+# ---- targets docker ----
+docker-build:
+	docker exec -it $(CONT) bash -lc "cd $(CONT_DIR) && make clean && make inner-build"
+
+
 run:
-	docker run --rm -it -v "$(PWD):/SO-TP1" -w /SO-TP1 $(IMG) \
-	  bash -lc './src/masterCatedra -w 10 -h 10 -d 200 -t 10 -p ./player ./player ./player ./player'
+	docker exec -it $(CONT) bash -lc "cd $(CONT_DIR)/src/ && ./masterCatedra -w 10 -h 10 -d 200 -t 10 -p ./player ./player ./player"
 
-.PHONY: all docker-pull docker-build inner-build clean
+run-view:
+	docker exec -it $(CONT) bash -lc "cd $(CONT_DIR)/src && ./masterCatedra -w 10 -h 10 -d 200 -t 10 -v ./view -p ./player ./player ./player"
 
+.PHONY: all inner-build clean docker-build run run-view
