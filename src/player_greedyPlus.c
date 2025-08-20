@@ -1,4 +1,5 @@
-// player.c
+// player_ff.c  (Flood Fill + heurística avanzada)
+
 #define _DEFAULT_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,9 +20,8 @@
 static game_state_t *gs = NULL;
 static game_sync_t  *gx = NULL;
 
-/* ================= funciones ================= */
+/* ================= utilitarios ================= */
 
-//imprime a stderr un mensaje formateado y termina con _exit(1)
 static void die(const char *fmt, ...) {
     va_list ap; va_start(ap, fmt);
     vfprintf(stderr, fmt, ap);
@@ -37,10 +37,7 @@ static void sem_wait_intr(sem_t *s) {
     }
 }
 
-/* Lectores–Escritores con preferencia al escritor (master):
-   Readers: wait(C); wait(E); if (++F == 1) wait(D); post(E); post(C);
-   Readers exit: wait(E); if (--F == 0) post(D); post(E);
-   Writers (master): wait(C); wait(D); ...; post(D); post(C); */
+/* Lectores–Escritores con preferencia al escritor (master) */
 static void reader_enter(void) {
     sem_wait_intr(&gx->C);
     sem_wait_intr(&gx->E);
@@ -73,77 +70,80 @@ static int my_index_by_pid(pid_t me) {
     return -1;
 }
 
-/* ================= Algoritmo de movimiento =================
-   Direcciones (unsigned char) 0..7:
-   0=arriba, luego horario: 1=arriba-der, 2=der, 3=abajo-der,
-   4=abajo, 5=abajo-izq, 6=izq, 7=arriba-izq. */
+
+/* ================= Algoritmo de movimiento ================= */
+
 static const int DX[8] = { 0, 1, 1, 1, 0,-1,-1,-1 };
 static const int DY[8] = {-1,-1, 0, 1, 1, 1, 0,-1 };
 
-static inline bool cell_is_free_reward(int v) { return v > 0; }  // 1..9
-static inline bool cell_is_taken(int v) { return v <= 0; }        // 0..-8 (capturada)
+static inline bool cell_is_taken(int v) { return v <= 0; }
 
-/* Heurística “greedy-plus”:
-   1) Entre las 8 vecinas libres, elegir la de MAYOR recompensa (1..9).
-   2) En empate, preferir la que deja más vecinas libres alrededor (espacio de maniobra).
-   3) Si no hay libres, devolver 0. */
-   static unsigned char pick_move(unsigned short x, unsigned short y) {
+// calcula suma de recompensas en un radio alrededor
+static int local_heat(const game_state_t *gs, int x, int y, int radius) {
+    int sum = 0;
+    for (int dy = -radius; dy <= radius; dy++) {
+        for (int dx = -radius; dx <= radius; dx++) {
+            int nx = x + dx, ny = y + dy;
+            if (!in_bounds(nx, ny)) continue;
+            int v = gs->board[idx(nx, ny)];
+            if (v > 0) sum += v;
+        }
+    }
+    return sum;
+}
+
+static unsigned char pick_move(unsigned short x, unsigned short y) {
     int best_dir = -1;
     int best_reward = -1;
-    int best_free_neighbors = -1;
+    int best_heat = -1;
 
     for (unsigned char dir = 0; dir < 8; dir++) {
-        int nx = (int)x + DX[dir];
-        int ny = (int)y + DY[dir];
+        int nx = x + DX[dir];
+        int ny = y + DY[dir];
         if (!in_bounds(nx, ny)) continue;
 
         int v = gs->board[idx(nx, ny)];
-        if (cell_is_taken(v)) continue;  // solo celdas libres con recompensa 1..9 (válidas)
-        // si es peor que lo mejor visto, ni calculo free_n
-        if (v < best_reward) continue;
+        if (cell_is_taken(v)) continue; // ocupada
 
-        int free_n = 0;
-        // empate en valor, miro cantidad de celdas vecinas libres
-        for (int k = 0; k < 8; k++) {
-            int mx = nx + DX[k], my = ny + DY[k];
-            if (!in_bounds(mx, my)) continue;
-            int mv = gs->board[idx(mx, my)];
-            if (cell_is_free_reward(mv)) free_n++;
-        }
-
-        // criterio: mayor reward; si empata, mayor free_n
-        if (v > best_reward || (v == best_reward && free_n > best_free_neighbors)) {
+        if (v > best_reward) {
             best_reward = v;
-            best_free_neighbors = free_n;
+            best_heat = local_heat(gs, nx, ny, 3);
             best_dir = dir;
+        } else if (v == best_reward) {
+            int heat = local_heat(gs, nx, ny, 3);
+            if (heat > best_heat) {
+                best_heat = heat;
+                best_dir = dir;
+            }
         }
     }
 
-    return (best_dir >= 0) ? (unsigned char)best_dir : 0; // 0..7; fallback 0 si no hay libres
+    return (best_dir >= 0) ? (unsigned char)best_dir : 0;
 }
+
+
 
 
 /* ================= main ================= */
 
 int main(int argc, char **argv) {
-    // El master invoca: ./player <width> <height>
     if (argc < 3) {
         fprintf(stderr, "Uso: %s <width> <height>\n", argv[0]);
-        return 1; //error
+        return 1;
     }
     int arg_width  = atoi(argv[1]);
     int arg_height = atoi(argv[2]);
-    (void)arg_width; (void)arg_height; // evita warnings de unused si no se pasan (no son obligatorios)
-    fprintf(stderr, "[%d] Jugador iniciado con tablero %dx%d\n",
-            getpid(), arg_width, arg_height); //chequeo de funcionamiento
+    (void)arg_width; (void)arg_height;
 
-    // Abrir shm: estado solo lectura; sync lectura/escritura. ---> muere y lanza error si falla
+    fprintf(stderr, "[%d] Jugador-FF iniciado con tablero %dx%d\n",
+            getpid(), arg_width, arg_height);
+
+    // abrir shm
     int fd_state = shm_open(SHM_STATE, O_RDONLY, 0);
     if (fd_state == -1) die("shm_open(%s): %s", SHM_STATE, strerror(errno));
     int fd_sync  = shm_open(SHM_SYNC,  O_RDWR,  0);
-    if (fd_sync  == -1) die("shm_open(%s): %s", SHM_SYNC,  strerror(errno));
+    if (fd_sync  == -1) die("shm_open(%s): %s", SHM_SYNC, strerror(errno));
 
-    // Mapear
     struct stat st_state, st_sync;
     if (fstat(fd_state, &st_state) == -1) die("fstat(state): %s", strerror(errno));
     if (fstat(fd_sync,  &st_sync ) == -1) die("fstat(sync ): %s", strerror(errno));
@@ -155,10 +155,10 @@ int main(int argc, char **argv) {
     close(fd_state);
     close(fd_sync);
 
-    // Buscar mi índice por PID en players[]
+    // buscar mi índice
     pid_t me = getpid();
     int myi = -1;
-    for (int tries = 0; tries < 2000 && myi < 0; tries++) { // ~2s en total antes de fallar con 1ms sleep entre busqueda
+    for (int tries = 0; tries < 2000 && myi < 0; tries++) {
         reader_enter();
         myi = my_index_by_pid(me);
         reader_exit();
@@ -166,36 +166,27 @@ int main(int argc, char **argv) {
     }
     if (myi < 0) die("no encontré mi pid en game_state");
 
-    // Bucle infinito principal
+    // loop principal
     for (;;) {
-        // Chequear fin de juego
         reader_enter();
         bool finished = gs->finished;
         unsigned short x = gs->players[myi].x;
         unsigned short y = gs->players[myi].y;
         reader_exit();
-        if (finished) break;  //salir si termino el juego
+        if (finished) break;
 
-        // Esperar permiso para 1 movimiento (semaforo)
         sem_wait_intr(&gx->G[myi]);
 
-        // Releer estado y decidir
         reader_enter();
         x = gs->players[myi].x;
         y = gs->players[myi].y;
         unsigned char dir = pick_move(x, y);
         reader_exit();
 
-        // Enviar 1 byte por stdout (pipe al master)
         ssize_t w = write(STDOUT_FILENO, &dir, 1);
-        if (w != 1) {
-            // Si se cerró el pipe, salimos y queda bloqueado (EOF).
-            break;
-        }
-        // Loop hasta que finished sea true o falle el pipe
+        if (w != 1) break;
     }
 
-    // Limpieza
     if (gs) munmap(gs, (size_t)st_state.st_size);
     if (gx) munmap(gx, (size_t)st_sync.st_size);
     return 0;
