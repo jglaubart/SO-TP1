@@ -11,10 +11,6 @@
 #include <errno.h>
 #include "structs.h"
 
-//memorias compartidas
-#define SHM_STATE "/game_state"
-#define SHM_SYNC  "/game_sync"
-
 //punteros a memorias compartidas
 static game_state_t *gs = NULL;
 static game_sync_t  *gx = NULL;

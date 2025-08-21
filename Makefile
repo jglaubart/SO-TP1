@@ -10,7 +10,7 @@ CFLAGS  := -std=c11 -Wall -Wextra -Werror -O2
 LDFLAGS := -pthread -lncurses
 
 #agregar master cuando se haga
-TARGETS := src/player_greedy src/view src/player_greedyPlus
+TARGETS := src/player_greedy src/view src/player_greedyPlus src/master
 
 # Por defecto: compilar en el contenedor persistente
 all: docker-build
@@ -28,8 +28,8 @@ src/player_greedy: src/player_greedy.c
 	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
 
 # --- Destapar cuando existan esos archivos ---
-# src/master: src/master.c
-#	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
+src/master: src/master.c
+	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
 
 clean:
 	rm -f src/player_greedy src/player_greedyPlus src/view src/master 
@@ -39,7 +39,12 @@ docker-build:
 	docker exec -it $(CONT) bash -lc "cd $(CONT_DIR) && make clean && make inner-build"
 
 run:
-	docker exec -it $(CONT) bash -lc "cd $(CONT_DIR)/src && ./masterCatedra -w 15 -h 15 -d 200 -t 15 -v ./view -p ./player_greedyPlus ./player_greedy ./player_greedy ./player_greedy ./player_greedy"
+	docker exec -it $(CONT) bash -lc "\rm -f /dev/shm/game_state /dev/shm/game_sync; \umask 000; \
+		cd $(CONT_DIR)/src && ./master -w 10 -h 10 -d 200 -t 10 -v ./view -p ./player_greedy ./player_greedy ./player_greedy"
+
+run_cat:
+	docker exec -it $(CONT) bash -lc "\rm -f /dev/shm/game_state /dev/shm/game_sync; \umask 000; \
+		cd $(CONT_DIR)/src && ./masterCatedra -w 10 -h 10 -d 200 -t 10 -v ./view -p ./player_greedy ./player_greedy ./player_greedy"
 
 
 .PHONY: all inner-build clean docker-build run run-view
