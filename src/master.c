@@ -105,6 +105,24 @@ static void parse_opts(int argc, char **argv, opts_t *o){
     if (o->nplayers < 1) die("Error: At least one player must be specified using -p.");
 }
 
+static void print_config(const opts_t *o){
+    printf("width: %d\n",   o->w);
+    printf("height: %d\n",  o->h);
+    printf("delay: %d\n",   o->delay_ms);
+    printf("timeout: %d\n", o->timeout_s);
+    printf("seed: %u\n",    o->seed);
+    printf("view: %s\n",    o->view_path ? o->view_path : "-");
+    printf("num_players: %d\n", o->nplayers);
+    for (int i = 0; i < o->nplayers; ++i)
+        printf("  %s\n", o->pbin[i]);
+    fflush(stdout);
+
+    // Mostrarlo "por unos segundos" antes de lanzar vista/jugadores
+    struct timespec ts = { .tv_sec = 2, .tv_nsec = 0 }; // 2 segundos
+    nanosleep(&ts, NULL);
+}
+
+
 // ============= board init =============
 static void init_board_rewards(int *b, int W, int H, unsigned seed){
     srand(seed);
@@ -161,7 +179,12 @@ static bool g_has_view = false;
 static void notify_view_and_delay(int delay_ms){
     if (g_has_view) {
         if (sem_post(&gx->A) == -1) die("sem_post(A): %s", strerror(errno));
-        sem_wait_intr(&gx->B);
+        if (!g_stop) {
+            sem_wait_intr(&gx->B);
+        } else {
+            // abortando: no bloquees si la vista ya murió
+            (void)sem_trywait(&gx->B);
+        }
     }
     if (delay_ms > 0) {
         struct timespec ts = { delay_ms/1000, (delay_ms%1000)*1000000L };
@@ -349,9 +372,7 @@ static void spawn_players(const opts_t *o, int pipes[][2]){
 }
 
 // ============= procesamiento de un movimiento =============
-static void apply_move_rr(int i, unsigned char dir, int W, int H, int *b,
-                          struct timespec *last_valid)
-{
+static void apply_move_rr(int i, unsigned char dir, int W, int H, int *b, struct timespec *last_valid){
     // validar dir 0..7
     if (dir > 7) {
         writer_enter();
@@ -362,8 +383,9 @@ static void apply_move_rr(int i, unsigned char dir, int W, int H, int *b,
     int x = gs->players[i].x, y = gs->players[i].y;
     int nx = x + DX[dir], ny = y + DY[dir];
     bool valid = in_bounds(nx,ny,W,H) && b[idx(nx,ny,W)] > 0;
+
     writer_enter();
-    if (!valid) {
+    if (!valid || gs->players[i].blocked) {
         gs->players[i].invalid_moves++;
         writer_exit();
         return;
@@ -390,6 +412,8 @@ int main(int argc, char **argv){
 
     // 2) parsear
     opts_t O; parse_opts(argc, argv, &O);
+
+    print_config(&O);
 
     // 3) shm unlink + permisos generosos
     shm_unlink(SHM_STATE);
@@ -446,7 +470,13 @@ int main(int argc, char **argv){
     notify_view_and_delay(O.delay_ms);
     for (int i=0;i<O.nplayers;i++) {
         if (!gs->players[i].blocked) { // <-- NO habilites a los bloqueados
-            if (sem_post(&gx->G[i]) == -1) die("sem_post(G[i]): %s", strerror(errno));
+            // habilitar nueva solicitud solo si no quedó bloqueado
+            writer_enter();
+            bool blk = gs->players[i].blocked;
+            writer_exit();
+            if (!blk) {
+                if (sem_post(&gx->G[i]) == -1) die("sem_post(G[i]): %s", strerror(errno));
+            }
         }
     }
     

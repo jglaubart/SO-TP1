@@ -118,3 +118,55 @@ make clean
 make inner-build
 exir
 exit
+ls
+cd root
+ls
+./master -w 10 -h 10 -d 200 -t 10 -v ./view -p ./player_greedy ./player_greedy ./player_greedy
+exit
+ls
+cd root
+cd src
+ls
+./master -w 10 -h 10 -d 200 -t 10 -v ./view -p ./player_greedy ./player_greedy ./player_greedy
+clear
+exir
+exit
+ls
+cd root
+ls
+cd src
+ls
+./masterCatedra -w 10 -h 10 -d 200 -t 10 -v ./view -p ./player_greedy ./player_greedy ./player_greedy
+exit
+ls
+cd root
+ls
+exit
+ls
+cd root
+ls
+make
+make
+make
+make runcat
+exit
+cd root
+make
+make run
+make run
+make run
+make clean
+make
+make run
+clear
+make run
+make clean
+make
+make run
+make clean
+make
+make run
+make runcat
+make runcat
+exir
+exit

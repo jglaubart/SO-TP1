@@ -115,7 +115,9 @@ static inline bool cell_is_taken(int v) { return v <= 0; }        // 0..-8 (capt
         }
     }
 
-    return (best_dir >= 0) ? (unsigned char)best_dir : 0; // 0..7; fallback 0 si no hay libres
+    // devuelve 0..7 si hay jugada; 255 si no hay ninguna vecina libre
+    return (best_dir >= 0) ? (unsigned char)best_dir : 255;
+
 }
 
 
@@ -182,13 +184,18 @@ int main(int argc, char **argv) {
         unsigned char dir = pick_move(x, y);
         reader_exit();
 
+        // Si no hay jugadas posibles: cerrar stdout => el máster verá EOF y te marcará "blk"
+        if (dir == 255) {
+            close(STDOUT_FILENO);   // provoca EOF en el máster
+            // opcional: _exit(0);  // también vale; con close alcanza porque el máster lee EOF
+            break;
+        }
+
         // Enviar 1 byte por stdout (pipe al master)
         ssize_t w = write(STDOUT_FILENO, &dir, 1);
         if (w != 1) {
-            // Si se cerró el pipe, salimos y queda bloqueado (EOF).
-            break;
+            break; // falla de pipe => salir
         }
-        // Loop hasta que finished sea true o falle el pipe
     }
 
     // Limpieza
