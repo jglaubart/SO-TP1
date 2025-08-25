@@ -27,7 +27,7 @@ runcat:
 	./src/masterCatedra -w 10 -h 10 -d 200 -t 10 -v ./src/view -p ./src/player_greedy ./src/player_greedy ./src/player_greedy
 
 run:
-	./src/master -w 10 -h 10 -d 200 -t 10 -v ./src/view -p ./src/player_greedy ./src/player_greedy ./src/player_greedy
+	./src/master -w 10 -h 10 -d 20 -t 10 -v ./src/view -p ./src/player_greedy ./src/player_greedy ./src/player_greedy
 clean:
 	rm -f $(VIEW) $(P1) $(MASTER)
 

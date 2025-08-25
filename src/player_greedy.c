@@ -184,10 +184,9 @@ int main(int argc, char **argv) {
         unsigned char dir = pick_move(x, y);
         reader_exit();
 
-        // Si no hay jugadas posibles: cerrar stdout => el máster verá EOF y te marcará "blk"
+        // Si no hay jugadas posibles: cerrar stdout => el máster verá EOF y marcará "blk"
         if (dir == 255) {
             close(STDOUT_FILENO);   // provoca EOF en el máster
-            // opcional: _exit(0);  // también vale; con close alcanza porque el máster lee EOF
             break;
         }
 

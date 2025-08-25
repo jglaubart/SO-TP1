@@ -170,3 +170,27 @@ make runcat
 make runcat
 exir
 exit
+ls
+cd roo
+cd root
+ls
+ls
+make clean
+make
+make run
+clear
+make runcat
+ls
+make run
+make run
+ls.
+clear
+ls
+cd ..
+ls
+ls
+exit
+cd root
+make
+make run
+exit
