@@ -31,6 +31,7 @@ typedef struct {
     int board[];                // tablero: fila-0, fila-1, ..., fila-(h-1)
 } game_state_t;
 
+
 // A: master -> vista (hay cambios)
 // B: vista -> master (impresión lista)
 // C: mutex para evitar inanición del escritor (master)
@@ -39,13 +40,13 @@ typedef struct {
 // F: contador de jugadores leyendo el estado
 // G[i]: permiso a cada jugador para enviar 1 movimiento
 typedef struct {
-    sem_t A;
-    sem_t B;
-    sem_t C;
-    sem_t D;
-    sem_t E;
-    unsigned int F;
-    sem_t G[9];
+    sem_t changes;
+    sem_t print;
+    sem_t master;
+    sem_t writer;
+    sem_t reader;
+    unsigned int player;
+    sem_t movement[9];
 } game_sync_t;
 
 #endif // STRUCTS_H

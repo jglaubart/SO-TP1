@@ -194,3 +194,69 @@ cd root
 make
 make run
 exit
+cd root
+make
+make clean
+make
+make
+make run
+make run
+apt-get remove --purge -y libncurses-dev
+apt-get autoremove -y
+apt-get clean
+make clean
+make
+make run
+make clean
+make
+make run
+make clean
+make
+make run
+make clean
+make
+make run
+make clean
+make
+make run
+make clean
+make
+make run
+make clean
+make
+make run
+make clean
+make run
+make run
+make
+clear
+make run
+make run
+make clean
+clear
+make clean
+make
+make clean
+make
+make run
+make clean
+make
+make run
+make clean
+make
+make clean
+make
+make run
+make run
+make run
+make clean
+make
+make
+make clean
+make
+make clean
+make
+make clean
+make
+make run
+exit

@@ -40,19 +40,19 @@ static void sem_wait_intr(sem_t *s) {
 // Readers: wait(C); wait(E); if (++F == 1) wait(D); post(E); post(C);
 // Readers exit: wait(E); if (--F == 0) post(D); post(E);
 static void reader_enter(void) {
-    sem_wait_intr(&gx->C);
-    sem_wait_intr(&gx->E);
-    gx->F++;
-    if (gx->F == 1) sem_wait_intr(&gx->D);
-    if (sem_post(&gx->E) == -1) die("sem_post(E): %s", strerror(errno));
-    if (sem_post(&gx->C) == -1) die("sem_post(C): %s", strerror(errno));
+    sem_wait_intr(&gx->master); 
+    sem_wait_intr(&gx->reader);
+    gx->player++;
+    if (gx->player == 1) sem_wait_intr(&gx->writer);
+    if (sem_post(&gx->reader) == -1) die("sem_post(reader): %s", strerror(errno));
+    if (sem_post(&gx->master) == -1) die("sem_post(master): %s", strerror(errno));
 }
 static void reader_exit(void) {
-    sem_wait_intr(&gx->E);
-    if (gx->F == 0) die("reader_exit: F underflow");
-    gx->F--;
-    if (gx->F == 0 && sem_post(&gx->D) == -1) die("sem_post(D): %s", strerror(errno));
-    if (sem_post(&gx->E) == -1) die("sem_post(E): %s", strerror(errno));
+    sem_wait_intr(&gx->reader);
+    if (gx->player == 0) die("reader_exit: player underflow");
+    gx->player--;
+    if (gx->player == 0 && sem_post(&gx->writer) == -1) die("sem_post(writer): %s", strerror(errno));
+    if (sem_post(&gx->reader) == -1) die("sem_post(reader): %s", strerror(errno));
 }
 
 static inline int idx(int x, int y) { return y * (int)gs->width + x; }
@@ -86,11 +86,9 @@ static int color_pair_for_player(int owner_idx) {
     return COLOR_PAIR(p) | A_BOLD;
 }
 
-
 static int color_pair_for_reward(void) {
     return g_has_color ? (COLOR_PAIR(1) | A_DIM) : A_NORMAL;
 }
-
 
 // ---- render ----
 static void render_board_and_stats(void) {
@@ -210,12 +208,12 @@ int main(int argc, char **argv) {
 
     // bucle: esperar A, leer/mostrar, postear B, salir si finished
     for (;;) {
-        sem_wait_intr(&gx->A);          // master: hay nueva foto del estado
+        sem_wait_intr(&gx->changes);          // master: hay nueva foto del estado
         reader_enter();
         bool finished = gs->finished;
         render_board_and_stats();
         reader_exit();
-        if (sem_post(&gx->B) == -1) die("sem_post(B): %s", strerror(errno)); // aviso "ya imprimí"
+        if (sem_post(&gx->print) == -1) die("sem_post(print): %s", strerror(errno)); // aviso "ya imprimí"
         if (finished) break;
     }
 

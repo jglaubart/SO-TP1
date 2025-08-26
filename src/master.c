@@ -18,6 +18,30 @@
 
 #include "structs.h"
 
+// --- ANSI colors para A..I, igual que la vista ---
+#define ANSI_RESET   "\x1b[0m"
+static const char *ansi_player_color(int idx) {
+    // A..I => 0..8, mapeo: CYAN, GREEN, YELLOW, MAGENTA, BLUE, RED, WHITE, CYAN, GREEN
+    static const char *map[9] = {
+        "\x1b[1;36m", // A CYAN
+        "\x1b[1;32m", // B GREEN
+        "\x1b[1;33m", // C YELLOW
+        "\x1b[1;35m", // D MAGENTA
+        "\x1b[1;34m", // E BLUE
+        "\x1b[1;31m", // F RED
+        "\x1b[1;37m", // G WHITE
+        "\x1b[1;36m", // H CYAN
+        "\x1b[1;32m", // I GREEN
+    };
+    if (idx < 0 || idx > 8) return "\x1b[1m"; // fallback bold
+    return map[idx];
+}
+static int stream_isatty(FILE *f) {
+    int fd = fileno(f);
+    return (fd >= 0) && isatty(fd);
+}
+
+
 // ============= util =============
 #define MAXP 9
 static volatile sig_atomic_t g_stop = 0;
@@ -52,12 +76,12 @@ static size_t GS_BYTES = 0;
 // ============= writer (master) - pref. escritor =============
 // Writers (master): wait(C); wait(D); ...; post(D); post(C)
 static void writer_enter(void){
-    sem_wait_intr(&gx->C);
-    sem_wait_intr(&gx->D);
+    sem_wait_intr(&gx->master);
+    sem_wait_intr(&gx->writer);
 }
 static void writer_exit(void){
-    if (sem_post(&gx->D)==-1) die("sem_post(D): %s", strerror(errno));
-    if (sem_post(&gx->C)==-1) die("sem_post(C): %s", strerror(errno));
+    if (sem_post(&gx->writer)==-1) die("sem_post(writer): %s", strerror(errno));
+    if (sem_post(&gx->master)==-1) die("sem_post(master): %s", strerror(errno));
 }
 
 // ============= argv parsing =============
@@ -178,12 +202,12 @@ static bool any_player_can_move(int W,int H,int n,int *b){
 static bool g_has_view = false;
 static void notify_view_and_delay(int delay_ms){
     if (g_has_view) {
-        if (sem_post(&gx->A) == -1) die("sem_post(A): %s", strerror(errno));
+        if (sem_post(&gx->changes) == -1) die("sem_post(changes): %s", strerror(errno));
         if (!g_stop) {
-            sem_wait_intr(&gx->B);
+            sem_wait_intr(&gx->print);
         } else {
-            // abortando: no bloquees si la vista ya murió
-            (void)sem_trywait(&gx->B);
+            // abortando: no bloquea si la vista ya murió
+            (void)sem_trywait(&gx->print);
         }
     }
     if (delay_ms > 0) {
@@ -205,12 +229,12 @@ static void cleanup(void){
     // intenta no tirar errores si ya se llamó
     if (gs) {
         // destruir semáforos
-        sem_destroy(&gx->A);
-        sem_destroy(&gx->B);
-        sem_destroy(&gx->C);
-        sem_destroy(&gx->D);
-        sem_destroy(&gx->E);
-        for (int i=0;i<MAXP;i++) sem_destroy(&gx->G[i]);
+        sem_destroy(&gx->changes);
+        sem_destroy(&gx->print);
+        sem_destroy(&gx->master);
+        sem_destroy(&gx->writer);
+        sem_destroy(&gx->reader);
+        for (int i=0;i<MAXP;i++) sem_destroy(&gx->movement[i]);
         munmap(gs, GS_BYTES);
         munmap(gx, sizeof(*gx));
         gs = NULL; gx = NULL;
@@ -449,14 +473,14 @@ int main(int argc, char **argv){
     place_players(O.w, O.h, O.nplayers);
 
     // semáforos (pshared=1)
-    if (sem_init(&gx->A, 1, 0) == -1) die("sem_init(A): %s", strerror(errno));
-    if (sem_init(&gx->B, 1, 0) == -1) die("sem_init(B): %s", strerror(errno));
-    if (sem_init(&gx->C, 1, 1) == -1) die("sem_init(C): %s", strerror(errno));
-    if (sem_init(&gx->D, 1, 1) == -1) die("sem_init(D): %s", strerror(errno));
-    if (sem_init(&gx->E, 1, 1) == -1) die("sem_init(E): %s", strerror(errno));
-    gx->F = 0;
+    if (sem_init(&gx->changes, 1, 0) == -1) die("sem_init(changes): %s", strerror(errno));
+    if (sem_init(&gx->print, 1, 0) == -1) die("sem_init(print): %s", strerror(errno));
+    if (sem_init(&gx->master, 1, 1) == -1) die("sem_init(master): %s", strerror(errno));
+    if (sem_init(&gx->writer, 1, 1) == -1) die("sem_init(writer): %s", strerror(errno));
+    if (sem_init(&gx->reader, 1, 1) == -1) die("sem_init(reader): %s", strerror(errno));
+    gx->player = 0;
     for (int i=0;i<MAXP;i++)
-        if (sem_init(&gx->G[i], 1, 0) == -1) die("sem_init(G): %s", strerror(errno));
+        if (sem_init(&gx->movement[i], 1, 0) == -1) die("sem_init(movement): %s", strerror(errno));
 
     // 7) lanzar vista y jugadores
     spawn_view(&O);
@@ -475,7 +499,7 @@ int main(int argc, char **argv){
             bool blk = gs->players[i].blocked;
             writer_exit();
             if (!blk) {
-                if (sem_post(&gx->G[i]) == -1) die("sem_post(G[i]): %s", strerror(errno));
+                if (sem_post(&gx->movement[i]) == -1) die("sem_post(movement[i]): %s", strerror(errno));
             }
         }
     }
@@ -533,7 +557,7 @@ int main(int argc, char **argv){
                 mark_blocked_players(O.w, O.h, O.nplayers, gs->board);
                 notify_view_and_delay(O.delay_ms);
                 // habilitar nueva solicitud a ese jugador
-                if (sem_post(&gx->G[i]) == -1) die("sem_post(G[i]): %s", strerror(errno));
+                if (sem_post(&gx->movement[i]) == -1) die("sem_post(movement[i]): %s", strerror(errno));
             } else if (r == 0) {
                 // EOF => marcar bloqueado y cerrar fd
                 writer_enter();
@@ -565,12 +589,12 @@ int main(int argc, char **argv){
     notify_view_and_delay(O.delay_ms);
 
     // despertar a todos para que puedan ver 'finished' y salir
-    for (int i = 0; i < O.nplayers; ++i) sem_post(&gx->G[i]);
+    for (int i = 0; i < O.nplayers; ++i) sem_post(&gx->movement[i]);
 
     // 11) drenar lo que quede y recién después cerrar nuestros FDs
     //    (2000 ms de gracia suele ser suficiente)
     drain_players_until_exit(O.nplayers, 2000);
-
+    
     // 12) esperar hijos e imprimir resultados
     int status;
     if (P.view_pid > 0) {
@@ -584,15 +608,24 @@ int main(int argc, char **argv){
     for (int i = 0; i < O.nplayers; ++i) {
         if (gs->players[i].pid <= 0) continue;
         if (waitpid(gs->players[i].pid, &status, 0) <= 0) continue;
+
+        const char *c1 = "", *c0 = "";
+        if (stream_isatty(stderr)) { c1 = ansi_player_color(i); c0 = ANSI_RESET; }
+
         unsigned s  = gs->players[i].score;
         unsigned v  = gs->players[i].valid_moves;
         unsigned iv = gs->players[i].invalid_moves;
+
+        char letter = 'A' + i;
         if (WIFEXITED(status)) {
-            fprintf(stderr, "Player %s (%d) exited (%d) with a score of %u / %u / %u\n",
-                    gs->players[i].name, i, WEXITSTATUS(status), s, v, iv);
+            // coloreo solo "Player <letra> <nombre>"
+            fprintf(stderr, "%sPlayer %c %s%s%s (%d)%s exited (%d) with a score of %u / %u / %u\n",
+                    c1, letter, c1, gs->players[i].name, c0, i, c0,
+                    WEXITSTATUS(status), s, v, iv);
         } else if (WIFSIGNALED(status)) {
-            fprintf(stderr, "Player %s (%d) killed by signal (%d) with a score of %u / %u / %u\n",
-                    gs->players[i].name, i, WTERMSIG(status), s, v, iv);
+            fprintf(stderr, "%sPlayer %c %s%s%s (%d)%s killed by signal (%d) with a score of %u / %u / %u\n",
+                    c1, letter, c1, gs->players[i].name, c0, i, c0,
+                    WTERMSIG(status), s, v, iv);
         }
     }
 }
