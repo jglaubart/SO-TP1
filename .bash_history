@@ -260,3 +260,116 @@ make clean
 make
 make run
 exit
+cd root
+ls
+make
+make clean
+make
+makr un
+make run
+make run
+make run
+make runcat
+make runcat
+make run
+make run
+exit
+cd root
+ls
+exit
+ls
+cd root
+ls
+cd tpteo/
+ls
+make
+cd tp1-so/
+make
+clear
+make all
+make docker_pull
+make docker
+clear
+make
+make all
+make
+make
+make
+make
+make
+clear
+make
+make all
+clear
+make master
+cd master
+make
+cd ..
+cd player
+make
+cd ..
+cd ..
+cd ..
+ls
+make
+make clean
+make
+make run
+make clean
+make
+make
+make run
+make run
+make clean
+make
+make run
+make run
+make clean
+make 
+make run
+make clean
+make 
+make run
+make clean
+make 
+make run
+make run
+make
+make
+make
+make run
+echo $TERM
+tput colors
+echo $TERM        # debe mostrar: xterm-256color
+tput colors       # debe imprimir: 256
+echo $TERM && tput colors
+exit
+echo $TERM && tput colors
+exit
+echo $TERM && tput colors
+make
+cd root
+make
+exit
+cd root
+make
+exir
+exit
+cd root
+make
+exit
+make
+cd root
+make
+make run
+make
+exit
+make
+cd root
+make
+make run
+make
+make run
+make
+make run
+exit
