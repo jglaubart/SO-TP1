@@ -114,6 +114,8 @@ int main(int argc, char **argv) {
     // Buscar mi índice por PID en players[]
     pid_t me = getpid();
     int myi = -1;
+
+    // Es realmente necesario? creo q debeira ser suficiente con el semáforo.
     for (int tries = 0; tries < 2000 && myi < 0; tries++) { // ~2s en total antes de fallar con 1ms sleep entre busqueda
         reader_enter();
         myi = my_index_by_pid(me);

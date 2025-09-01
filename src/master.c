@@ -36,6 +36,8 @@ static const char *ansi_player_color(int idx) {
     if (idx < 0 || idx > 8) return "\x1b[1m"; // fallback bold
     return map[idx];
 }
+
+//chequear que el stream es tty (terminal interactiva para usar colores)
 static int stream_isatty(FILE *f) {
     int fd = fileno(f);
     return (fd >= 0) && isatty(fd);
@@ -73,7 +75,7 @@ static game_state_t *gs = NULL;
 static game_sync_t  *gx = NULL;
 static size_t GS_BYTES = 0;
 
-// ============= writer (master) - pref. escritor =============
+// ============= writer (master) =============
 // Writers (master): wait(C); wait(D); ...; post(D); post(C)
 static void writer_enter(void){
     sem_wait_intr(&gx->master);
@@ -182,7 +184,7 @@ static void place_players(int W,int H,int n){
     }
 }
 
-// ¿queda alguna movida válida para (x,y)?
+// ¿queda algun mov válido para (x,y)?
 static bool has_valid_move_from(int x,int y,int W,int H,int *b){
     for (int d=0; d<8; ++d){
         int nx = x + DX[d], ny = y + DY[d];
@@ -248,7 +250,8 @@ static void cleanup(void){
 // Mantiene los read-end abiertos para evitar SIGPIPE en los hijos.
 static void drain_players_until_exit(int nplayers, int grace_ms) {
     int abiertos = 0;
-    for (int i = 0; i < nplayers; ++i) if (P.pipes_r[i] >= 0) abiertos++;
+    for (int i = 0; i < nplayers; ++i)
+     if (P.pipes_r[i] >= 0) abiertos++;
 
     struct timespec start, now;
     clock_gettime(CLOCK_MONOTONIC, &start);
@@ -298,10 +301,6 @@ static void drain_players_until_exit(int nplayers, int grace_ms) {
             }
             // si r==1, descartamos el byte (llegó justo antes de ver "finished")
         }
-    }
-    // si quedó alguno abierto, cerralo
-    for (int i = 0; i < nplayers; ++i) {
-        if (P.pipes_r[i] >= 0) { close(P.pipes_r[i]); P.pipes_r[i] = -1; }
     }
 }
 

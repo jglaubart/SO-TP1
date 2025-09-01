@@ -13,7 +13,7 @@ extern const int DY[8];
 
 // Estrategias disponibles
 typedef enum {
-    STRAT_GREEDY_PLUS = 0,      // tu heurística base (recompensa + movilidad local)
+    STRAT_GREEDY_PLUS = 0,      // greedy (recompensa + movilidad local)
     STRAT_SPACE_MAX,            // maximiza maniobrabilidad (2 anillos)
     STRAT_WALL_HUG,             // bordes/pared para reducir exposición
     STRAT_CENTER_CONTROL,       // prioriza centro y celdas altas
