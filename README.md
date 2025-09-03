@@ -15,7 +15,7 @@ Está desarrollado en C y utiliza memoria compartida, semáforos y pipes para co
    make docker_cont
    ```
 
-   Esto abre un contenedor con la imagen y monta el proyecto en `/root`.
+   Esto abre un contenedor temporal con la imagen y monta el proyecto en `/root`.
 
 2. Una vez adentro del contenedor, ir a la carpeta montada (ya dentro de `/root`) y correr:
 
