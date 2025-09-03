@@ -220,7 +220,7 @@ static void render_board_and_stats(void) {
     int stats_h = rows + 2;
     int stats_y0 = y0 + box_h + 1;
 
-    draw_box(stats_y0, stats_x0, stats_h, stats_w + 2);
+    draw_box(stats_y0, stats_x0, stats_h, stats_w + 8);
 
     const char *title = "Players";
     int title_x = stats_x0 + (stats_w - (int)strlen(title)) / 2;
