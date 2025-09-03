@@ -48,21 +48,21 @@ static void sem_wait_intr(sem_t *s) {
    Readers exit: wait(E); if (--F == 0) post(D); post(E);
    Writers (master): wait(C); wait(D); ...; post(D); post(C); */
 static void reader_enter(void) {
-    sem_wait_intr(&gx->master);
-    sem_wait_intr(&gx->reader);
-    gx->player++;
-    if (gx->player == 1) sem_wait_intr(&gx->writer);
-    if (sem_post(&gx->reader) == -1) die("sem_post(reader): %s", strerror(errno));
-    if (sem_post(&gx->master) == -1) die("sem_post(master): %s", strerror(errno));
+    sem_wait_intr(&gx->writer_starvation_mutex);
+    sem_wait_intr(&gx->readers_count_lock);
+    gx->readers_count++;
+    if (gx->readers_count == 1) sem_wait_intr(&gx->state_write_lock);
+    if (sem_post(&gx->readers_count_lock) == -1) die("sem_post(readers_count_lock): %s", strerror(errno));
+    if (sem_post(&gx->writer_starvation_mutex) == -1) die("sem_post(writer_starvation_mutex): %s", strerror(errno));
 }
 
 static void reader_exit(void) {
-    sem_wait_intr(&gx->reader);
-    if (gx->player == 0) die("reader_exit: player underflow");
-    gx->player--;
-    if (gx->player == 0 && sem_post(&gx->writer) == -1)
-        die("sem_post(writer): %s", strerror(errno));
-    if (sem_post(&gx->reader) == -1) die("sem_post(reader): %s", strerror(errno));
+    sem_wait_intr(&gx->readers_count_lock);
+    if (gx->readers_count == 0) die("reader_exit: player underflow");
+    gx->readers_count--;
+    if (gx->readers_count == 0 && sem_post(&gx->state_write_lock) == -1)
+        die("sem_post(state_write_lock): %s", strerror(errno));
+    if (sem_post(&gx->readers_count_lock) == -1) die("sem_post(readers_count_lock): %s", strerror(errno));
 }
 
 static inline int in_bounds(int x, int y) {

@@ -11,6 +11,8 @@
 # hlsearch on (H) or off (h):
 ~h
 # Command Line History (newest to oldest):
+:wq
+|2,0,1756811201,,"wq"
 :q!
 |2,0,1755196655,,"q!"
 
@@ -25,14 +27,29 @@
 # Registers:
 
 # File marks:
-'0  1  0  ~/p.c
-|4,48,1,0,1755196655,"~/p.c"
+'0  83  29  ~/Makefile
+|4,48,83,29,1756811201,"~/Makefile"
+'1  1  0  ~/p.c
+|4,49,1,0,1755196655,"~/p.c"
 
 # Jumplist (newest first):
+-'  83  29  ~/Makefile
+|4,39,83,29,1756811201,"~/Makefile"
+-'  1  0  ~/Makefile
+|4,39,1,0,1756811155,"~/Makefile"
+-'  1  0  ~/p.c
+|4,39,1,0,1755196655,"~/p.c"
 -'  1  0  ~/p.c
 |4,39,1,0,1755196655,"~/p.c"
 
 # History of marks within files (newest to oldest):
+
+> ~/Makefile
+	*	1756811199	0
+	"	83	29
+	^	83	30
+	.	83	29
+	+	83	29
 
 > ~/p.c
 	*	1755196650	0

@@ -78,12 +78,12 @@ static size_t GS_BYTES = 0;
 // ============= writer (master) =============
 // Writers (master): wait(C); wait(D); ...; post(D); post(C)
 static void writer_enter(void){
-    sem_wait_intr(&gx->master);
-    sem_wait_intr(&gx->writer);
+    sem_wait_intr(&gx->writer_starvation_mutex);
+    sem_wait_intr(&gx->state_write_lock);
 }
 static void writer_exit(void){
-    if (sem_post(&gx->writer)==-1) die("sem_post(writer): %s", strerror(errno));
-    if (sem_post(&gx->master)==-1) die("sem_post(master): %s", strerror(errno));
+    if (sem_post(&gx->state_write_lock)==-1) die("sem_post(state_write_lock): %s", strerror(errno));
+    if (sem_post(&gx->writer_starvation_mutex)==-1) die("sem_post(writer_starvation_mutex): %s", strerror(errno));
 }
 
 // ============= argv parsing =============
@@ -157,30 +157,36 @@ static void init_board_rewards(int *b, int W, int H, unsigned seed){
             b[idx(x,y,W)] = 1 + (rand() % 9);
 }
 
-// posiciones iniciales: centros de una grilla r x c ~ sqrt(n)
-static void place_players(int W,int H,int n){
-    int r = 1, c = n;
-    for (int k = 1; k*k <= n; ++k) { r = k; }
-    c = (n + r - 1) / r;
-    int cellW = W / c;
-    int cellH = H / r;
-    int p = 0;
-    for (int i=0; i<r && p<n; ++i){
-        for (int j=0; j<c && p<n; ++j){
-            int cx = j*cellW + cellW/2;
-            int cy = i*cellH + cellH/2;
-            if (cx >= W) cx = W-1;
-            if (cy >= H) cy = H-1;
-            gs->players[p].x = (unsigned short)cx;
-            gs->players[p].y = (unsigned short)cy;
-            gs->players[p].score = 0;
-            gs->players[p].valid_moves = 0;
-            gs->players[p].invalid_moves = 0;
-            gs->players[p].blocked = false;
-            // celda inicial queda capturada por el jugador p (no suma recompensa)
-            gs->board[idx(cx,cy,W)] = -p;
-            p++;
-        }
+// posiciones iniciales
+static void place_players(int W, int H, int n) {
+    int total = W * H;
+    if (n > total) die("Más jugadores que celdas!");
+
+    // Arreglo estático para posiciones (máximo tablero 100x100)
+    int positions[10000];
+    if (total > 10000) die("Tablero demasiado grande para inicialización aleatoria!");
+
+    for (int i = 0; i < total; ++i) positions[i] = i;
+
+    // Shuffle Fisher-Yates
+    for (int i = total - 1; i > 0; --i) {
+        int j = rand() % (i + 1);
+        int tmp = positions[i];
+        positions[i] = positions[j];
+        positions[j] = tmp;
+    }
+
+    for (int p = 0; p < n; ++p) {
+        int pos = positions[p];
+        int x = pos % W;
+        int y = pos / W;
+        gs->players[p].x = (unsigned short)x;
+        gs->players[p].y = (unsigned short)y;
+        gs->players[p].score = 0;
+        gs->players[p].valid_moves = 0;
+        gs->players[p].invalid_moves = 0;
+        gs->players[p].blocked = false;
+        gs->board[idx(x, y, W)] = -p;
     }
 }
 
@@ -204,12 +210,12 @@ static bool any_player_can_move(int W,int H,int n,int *b){
 static bool g_has_view = false;
 static void notify_view_and_delay(int delay_ms){
     if (g_has_view) {
-        if (sem_post(&gx->changes) == -1) die("sem_post(changes): %s", strerror(errno));
+        if (sem_post(&gx->state_changed) == -1) die("sem_post(state_changed): %s", strerror(errno));
         if (!g_stop) {
-            sem_wait_intr(&gx->print);
+            sem_wait_intr(&gx->state_rendered);
         } else {
             // abortando: no bloquea si la vista ya murió
-            (void)sem_trywait(&gx->print);
+            (void)sem_trywait(&gx->state_rendered);
         }
     }
     if (delay_ms > 0) {
@@ -231,11 +237,11 @@ static void cleanup(void){
     // intenta no tirar errores si ya se llamó
     if (gs) {
         // destruir semáforos
-        sem_destroy(&gx->changes);
-        sem_destroy(&gx->print);
-        sem_destroy(&gx->master);
-        sem_destroy(&gx->writer);
-        sem_destroy(&gx->reader);
+        sem_destroy(&gx->state_changed);
+        sem_destroy(&gx->state_rendered);
+        sem_destroy(&gx->writer_starvation_mutex);
+        sem_destroy(&gx->state_write_lock);
+        sem_destroy(&gx->readers_count_lock);
         for (int i=0;i<MAXP;i++) sem_destroy(&gx->movement[i]);
         munmap(gs, GS_BYTES);
         munmap(gx, sizeof(*gx));
@@ -472,12 +478,12 @@ int main(int argc, char **argv){
     place_players(O.w, O.h, O.nplayers);
 
     // semáforos (pshared=1)
-    if (sem_init(&gx->changes, 1, 0) == -1) die("sem_init(changes): %s", strerror(errno));
-    if (sem_init(&gx->print, 1, 0) == -1) die("sem_init(print): %s", strerror(errno));
-    if (sem_init(&gx->master, 1, 1) == -1) die("sem_init(master): %s", strerror(errno));
-    if (sem_init(&gx->writer, 1, 1) == -1) die("sem_init(writer): %s", strerror(errno));
-    if (sem_init(&gx->reader, 1, 1) == -1) die("sem_init(reader): %s", strerror(errno));
-    gx->player = 0;
+    if (sem_init(&gx->state_changed, 1, 0) == -1) die("sem_init(state_changed): %s", strerror(errno));
+    if (sem_init(&gx->state_rendered, 1, 0) == -1) die("sem_init(state_rendered): %s", strerror(errno));
+    if (sem_init(&gx->writer_starvation_mutex, 1, 1) == -1) die("sem_init(writer_starvation_mutex): %s", strerror(errno));
+    if (sem_init(&gx->state_write_lock, 1, 1) == -1) die("sem_init(state_write_lock): %s", strerror(errno));
+    if (sem_init(&gx->readers_count_lock, 1, 1) == -1) die("sem_init(readers_count_lock): %s", strerror(errno));
+    gx->readers_count = 0;
     for (int i=0;i<MAXP;i++)
         if (sem_init(&gx->movement[i], 1, 0) == -1) die("sem_init(movement): %s", strerror(errno));
 

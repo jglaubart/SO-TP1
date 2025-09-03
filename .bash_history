@@ -373,3 +373,60 @@ make run
 make
 make run
 exit
+cd root
+make clean
+make
+make run
+ls
+cd src
+ls
+cd ..
+vim Makefile 
+make run
+exit
+cd root
+ls
+make
+make
+make
+make run
+make run
+make
+make run
+make run
+make run
+make
+make run
+make run
+make run
+make run
+clear
+exit
+cd root
+ls
+make run_play /src/player.c
+make run_play ./src/player.c
+make run_play ./src/player
+exir
+exit
+ls
+exit
+ls
+exirt
+exit
+ls
+make
+make
+exit
+make
+make
+exit
+make
+mke
+make
+make run
+make clean
+make
+exit
+make
+exit

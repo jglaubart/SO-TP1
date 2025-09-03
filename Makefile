@@ -19,11 +19,11 @@ OBJS_PLAYER := src/player.o src/player_strategies.o
 .PHONY: all clean deps deps-reset check-colors run runcat
 
 # Compila todo
-all: clean $(VIEW) $(PLAYER) $(MASTER)
+all: clean deps $(VIEW) $(PLAYER) $(MASTER)
 
 # ===== Dependencias del sistema (idempotente con stamp) =====
 DEB_PKGS    := libncurses-dev ncurses-term
-DEPS_STAMP  := .deps.stamp
+DEPS_STAMP  := /var/.tp1_deps.stamp
 
 deps: $(DEPS_STAMP)
 
@@ -65,7 +65,7 @@ src/player.o: src/player.c src/player_strategies.h
 src/player_strategies.o: src/player_strategies.c src/player_strategies.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-# --- View (depende de deps para tener terminfo 256) ---
+# --- View (depende de deps para tener 256 colores) ---
 $(VIEW): src/view.c | deps
 	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS) $(NCURSES)
 
@@ -73,15 +73,14 @@ $(VIEW): src/view.c | deps
 $(MASTER): src/master.c
 	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
 
-# --- Ejecutar con máster de la cátedra (debug) ---
-runcat:
-	./src/masterCatedra -w 10 -h 10 -d 300 -t 10 \
-		-v ./src/view -p ./src/player ./src/player ./src/player
+# --- Entrar a un contenedor Docker temporal con la imagen de la cátedra ---
+docker_cont:
+	docker run --rm -it -v "$$(pwd)":/root -w /root agodio/itba-so-multi-platform:3.0
 
-# --- Ejecutar con tu máster ---
+# --- Ejecutar con máster ---
 run:
-	./src/master -w 15 -h 15 -d 300 -t 10 \
-		-v ./src/view -p ./src/player ./src/player ./src/player ./src/player ./src/player ./src/player
+	./src/master -w 10 -h 10 -d 200 -t 10 \
+		-v ./src/view -p ./src/player ./src/player ./src/player
 
 # --- Clean ---
 clean:

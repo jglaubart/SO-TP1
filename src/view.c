@@ -21,9 +21,9 @@ static game_state_t *gs = NULL;
 static game_sync_t  *gx = NULL;
 
 // --- escala visual (celda = CELL_H x CELL_W chars; ratio 2:1 para "cuadrado" visual) ---
-#define CELL_SCALE 3
-#define CELL_W (2*CELL_SCALE)  // 6
-#define CELL_H (1*CELL_SCALE)  // 3
+#define CELL_SCALE 2
+#define CELL_W (2*CELL_SCALE) 
+#define CELL_H (1*CELL_SCALE) 
 
 // --- helpers ui ---
 static inline void draw_rect(int y0, int x0, int h, int w, attr_t attr) {
@@ -74,19 +74,19 @@ static void sem_wait_intr(sem_t *s) {
 
 // Lectores–Escritores con preferencia al escritor (master)
 static void reader_enter(void) {
-    sem_wait_intr(&gx->master);
-    sem_wait_intr(&gx->reader);
-    gx->player++;
-    if (gx->player == 1) sem_wait_intr(&gx->writer);
-    if (sem_post(&gx->reader) == -1) die("sem_post(reader): %s", strerror(errno));
-    if (sem_post(&gx->master) == -1) die("sem_post(master): %s", strerror(errno));
+    sem_wait_intr(&gx->writer_starvation_mutex);
+    sem_wait_intr(&gx->readers_count_lock);
+    gx->readers_count++;
+    if (gx->readers_count == 1) sem_wait_intr(&gx->state_write_lock);
+    if (sem_post(&gx->readers_count_lock) == -1) die("sem_post(readers_count_lock): %s", strerror(errno));
+    if (sem_post(&gx->writer_starvation_mutex) == -1) die("sem_post(writer_starvation_mutex): %s", strerror(errno));
 }
 static void reader_exit(void) {
-    sem_wait_intr(&gx->reader);
-    if (gx->player == 0) die("reader_exit: player underflow");
-    gx->player--;
-    if (gx->player == 0 && sem_post(&gx->writer) == -1) die("sem_post(writer): %s", strerror(errno));
-    if (sem_post(&gx->reader) == -1) die("sem_post(reader): %s", strerror(errno));
+    sem_wait_intr(&gx->readers_count_lock);
+    if (gx->readers_count == 0) die("reader_exit: player underflow");
+    gx->readers_count--;
+    if (gx->readers_count == 0 && sem_post(&gx->state_write_lock) == -1) die("sem_post(state_write_lock): %s", strerror(errno));
+    if (sem_post(&gx->readers_count_lock) == -1) die("sem_post(readers_count_lock): %s", strerror(errno));
 }
 
 static inline int idx(int x, int y) { return y * (int)gs->width + x; }
@@ -122,6 +122,7 @@ static void setup_colors(void) {
         init_pair(10 + i, COLOR_BLACK, BODY_BG[i]);  // cuerpo (pastel)
         init_pair(20 + i, COLOR_BLACK, HEAD_BG[i]);  // cabeza (más intensa)
         init_pair(30 + i, COLOR_BLACK, HEAD_BG[i]);  // ojos negros sobre cabeza
+        init_pair(2, COLOR_RED, -1); // Rojo sobre fondo default
     }
 }
 
@@ -206,7 +207,9 @@ static void render_board_and_stats(void) {
     }
     int inner_needed = 2 + 2 + 1 + max_linew + 2; // margen + chip + espacio + texto + margen
     int needed_total = inner_needed + 2;          // + bordes
-    int stats_w = box_w; if (needed_total > stats_w) stats_w = needed_total; if (stats_w > term_w) stats_w = term_w;
+    int stats_w = box_w; 
+    if (needed_total > stats_w) stats_w = needed_total; 
+    if (stats_w > term_w) stats_w = term_w;
 
     int board_center_x = left + box_w / 2;
     int stats_x0 = board_center_x - stats_w / 2;
@@ -217,7 +220,7 @@ static void render_board_and_stats(void) {
     int stats_h = rows + 2;
     int stats_y0 = y0 + box_h + 1;
 
-    draw_box(stats_y0, stats_x0, stats_h, stats_w);
+    draw_box(stats_y0, stats_x0, stats_h, stats_w + 2);
 
     const char *title = "Players";
     int title_x = stats_x0 + (stats_w - (int)strlen(title)) / 2;
@@ -227,11 +230,19 @@ static void render_board_and_stats(void) {
     int inner_left = stats_x0 + 2;
     for (unsigned int i = 0; i < np; i++) {
         const player_t *p = &gs->players[i];
-        attron(COLOR_PAIR(20 + (int)i)); mvprintw(rstats, inner_left, "  "); attroff(COLOR_PAIR(20 + (int)i));
+        attron(COLOR_PAIR(20 + (int)i)); 
+        mvprintw(rstats, inner_left, "  "); 
+        attroff(COLOR_PAIR(20 + (int)i));
+        if (p->blocked) {
+            attron(COLOR_PAIR(2) | A_BOLD);
+        }
         mvprintw(rstats, inner_left + 3,
-                 "%c name=%-10s score=%-4u valid=%-3u invalid=%-3u pos=(%u,%u) %s",
-                 'A' + (int)i, p->name, p->score, p->valid_moves, p->invalid_moves,
+                 "%c name=%-10s pid=%-6d score=%-4u valid=%-3u invalid=%-3u pos=(%u,%u) %s",
+                 'A' + (int)i, p->name, p->pid, p->score, p->valid_moves, p->invalid_moves,
                  (unsigned)p->x, (unsigned)p->y, p->blocked ? "blk" : "   ");
+         if (p->blocked) {
+            attroff(COLOR_PAIR(2) | A_BOLD);
+        }
         rstats++;
     }
 
@@ -270,13 +281,31 @@ int main(int argc, char **argv) {
 
     // loop de vista
     for (;;) {
-        sem_wait_intr(&gx->changes);
+        sem_wait_intr(&gx->state_changed);
         reader_enter();
         bool finished = gs->finished;
         render_board_and_stats();
         reader_exit();
-        if (sem_post(&gx->print) == -1) die("sem_post(print): %s", strerror(errno));
+        if (sem_post(&gx->state_rendered) == -1) die("sem_post(state_rendered): %s", strerror(errno));
         if (finished) break;
+    }
+
+    // --- mantener el estado final en pantalla hasta una tecla ---
+    // Bloquea en getch() para que el usuario pueda ver el estado final.
+    {
+        int term_h, term_w; getmaxyx(stdscr, term_h, term_w);
+        const char *msg = "Fin del juego. Presione cualquier tecla para continuar";
+        int msg_x = (term_w - (int)strlen(msg)) / 2; if (msg_x < 0) msg_x = 0;
+        int msg_y = term_h - 2; if (msg_y < 0) msg_y = 0;
+
+        // Dibujamos una línea “suave” y el mensaje
+        mvhline(msg_y - 1, 0, ' ', term_w);
+        mvprintw(msg_y, msg_x, "%s", msg);
+        refresh();
+
+        // Aseguramos modo bloqueante y esperamos
+        nodelay(stdscr, FALSE);
+        getch();
     }
 
     endwin();

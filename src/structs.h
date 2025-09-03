@@ -39,14 +39,25 @@ typedef struct {
 // E: mutex del contador de lectores, siguiente variable
 // F: contador de jugadores leyendo el estado
 // G[i]: permiso a cada jugador para enviar 1 movimiento
+// typedef struct {
+//     sem_t changes;
+//     sem_t print;
+//     sem_t master;
+//     sem_t writer;
+//     sem_t reader;
+//     unsigned int player;
+//     sem_t movement[9];
+// } game_sync_t;
+
 typedef struct {
-    sem_t changes;
-    sem_t print;
-    sem_t master;
-    sem_t writer;
-    sem_t reader;
-    unsigned int player;
-    sem_t movement[9];
+    sem_t state_changed;            // A: máster → vista — hay cambios en el estado
+    sem_t state_rendered;           // B: vista → máster — terminó de imprimir
+    sem_t writer_starvation_mutex;  // C: mutex para evitar inanición del máster (lector preferencia escritor)
+    sem_t state_write_lock;         // D: exclusión mutua de escritura sobre el estado
+    sem_t readers_count_lock;       // E: acceso exclusivo al contador de lectores
+    unsigned int readers_count;     // F: cantidad de lectores activos sobre el estado (jugadores/vista)
+    sem_t movement[9];       // G[i]: permiso a jugador i para enviar 1 movimiento
 } game_sync_t;
+
 
 #endif // STRUCTS_H
