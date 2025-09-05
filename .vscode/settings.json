@@ -1,0 +1,10 @@
+{
+    "files.associations": {
+        "view.h": "c",
+        "shared_mem.h": "c",
+        "unistd.h": "c",
+        "stdbool.h": "c",
+        "sync_utils.h": "c",
+        "errno.h": "c"
+    }
+}

@@ -1,6 +1,6 @@
 # === Toolchain / flags ===
 CC      := gcc
-CFLAGS  := -std=c11 -Wall -Wextra -Werror -O2 -pedantic
+CFLAGS  := -std=c11 -Wall -Wextra -Werror -O2 -pedantic -Iinclude
 LDFLAGS := -pthread
 NCURSES := -lncurses
 
@@ -14,7 +14,9 @@ PLAYER  := src/player
 MASTER  := src/master
 
 # === Objetos intermedios ===
-OBJS_PLAYER := src/player.o src/player_strategies.o
+OBJS_PLAYER := src/player.o src/player_strategies.o src/shared_mem.o src/sync_utils.o src/game_utils.o
+OBJS_VIEW   := src/view.o src/shared_mem.o src/sync_utils.o src/game_utils.o
+OBJS_MASTER := src/master.o src/shared_mem.o src/sync_utils.o src/game_utils.o
 
 .PHONY: all clean deps deps-reset check-colors run runcat
 
@@ -59,19 +61,31 @@ check-colors:
 $(PLAYER): $(OBJS_PLAYER)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-src/player.o: src/player.c src/player_strategies.h
+src/player.o: src/player.c include/player_strategies.h include/shared_mem.h include/sync_utils.h include/game_utils.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-src/player_strategies.o: src/player_strategies.c src/player_strategies.h
+src/player_strategies.o: src/player_strategies.c include/player_strategies.h
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+# View objects
+src/view.o: src/view.c include/shared_mem.h include/sync_utils.h include/game_utils.h
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+# Libs usadas por view
+src/%.o: src/%.c include/%.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 # --- View (depende de deps para tener 256 colores) ---
-$(VIEW): src/view.c | deps
-	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS) $(NCURSES)
+$(VIEW): $(OBJS_VIEW) | deps
+	$(CC) $(CFLAGS) -o $@ $(OBJS_VIEW) $(LDFLAGS) $(NCURSES)
 
 # --- Master ---
-$(MASTER): src/master.c
-	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
+$(MASTER): $(OBJS_MASTER)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+src/master.o: src/master.c include/shared_mem.h include/sync_utils.h include/game_utils.h
+	$(CC) $(CFLAGS) -c -o $@ $<
+
 
 # --- Entrar a un contenedor Docker temporal con la imagen de la cátedra ---
 docker_cont:
@@ -84,5 +98,5 @@ run:
 
 # --- Clean ---
 clean:
-	rm -f $(VIEW) $(PLAYER) $(MASTER) $(OBJS_PLAYER)
+	rm -f $(VIEW) $(PLAYER) $(MASTER) $(OBJS_PLAYER) $(OBJS_VIEW) $(OBJS_MASTER)
 

@@ -6,15 +6,12 @@
 #include <stdbool.h>
 #include <string.h>
 #include <unistd.h>
-#include <fcntl.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <semaphore.h>
 #include <errno.h>
 #include <ncurses.h>
 
-#include "structs.h"
+#include "shared_mem.h"
+#include "sync_utils.h"
+#include "game_utils.h"
 
 // shm pointers
 static game_state_t *gs = NULL;
@@ -25,8 +22,89 @@ static game_sync_t  *gx = NULL;
 #define CELL_W (2*CELL_SCALE) 
 #define CELL_H (1*CELL_SCALE) 
 
+//================= Declaraciones de funciones =====================
 // --- helpers ui ---
-static inline void draw_rect(int y0, int x0, int h, int w, attr_t attr) {
+static void draw_rect(int y0, int x0, int h, int w, attr_t attr);
+static void draw_centered_char(int y0, int x0, int h, int w, attr_t attr, char ch);
+static void draw_box(int y0, int x0, int h, int w);
+
+// ---- utils ----
+static void die_ncurses(const char *fmt, ...) __attribute__((noreturn));
+
+// Pares: 10..18 cuerpo, 20..28 cabeza, 30..38 ojos (fg negro sobre bg de cabeza)
+static int pair_body(int idx);
+static int pair_head(int idx);
+static int pair_eyes(int idx);
+static int pair_reward(void);
+
+// --- colores (ASUME 256 colores; aborta si no hay) ---
+static bool g_has_color = false;
+
+// Paleta xterm-256 fija: 9 pares (cuerpo pastel / cabeza más intensa) por jugador A..I
+// Elegidos para ser distinguibles y mantener "misma familia" de color.
+static const short BODY_BG[9];
+static const short HEAD_BG[9];
+
+static void setup_colors(void);
+static void render_board_and_stats(void);
+
+//========================= main ========================= 
+int main(int argc, char **argv) {
+    (void)argc; (void)argv;
+    // Fuerza 256 colores para esta vista
+    setenv("TERM", "xterm-256color", 1);
+    
+    initscr();
+    cbreak();
+    noecho();
+    keypad(stdscr, TRUE);
+    curs_set(0);
+    setup_colors();  // aborta si no hay 256
+
+    size_t GS_BYTES = 0;
+    if (gs_open_ro(&gs, &GS_BYTES) != 0) die_ncurses("gs_open_ro: %s", strerror(errno));
+    if (gx_open_rw(&gx) != 0) die_ncurses("gx_open_rw: %s", strerror(errno));
+
+    // loop de vista
+    for (;;) {
+        sem_wait_intr(&gx->state_changed);
+        reader_enter(gx);
+        bool finished = gs->finished;
+        render_board_and_stats();
+        reader_exit(gx);
+        if (sem_post(&gx->state_rendered) == -1) die_ncurses("sem_post(state_rendered): %s", strerror(errno));
+        if (finished) break;
+    }
+
+    // --- mantener el estado final en pantalla hasta una tecla ---
+    // Bloquea en getch() para que el usuario pueda ver el estado final.
+    {
+        int term_h, term_w; getmaxyx(stdscr, term_h, term_w);
+        const char *msg = "Fin del juego. Presione cualquier tecla para continuar";
+        int msg_x = (term_w - (int)strlen(msg)) / 2; if (msg_x < 0) msg_x = 0;
+        int msg_y = term_h - 2; if (msg_y < 0) msg_y = 0;
+
+        // Dibuja una línea “suave” y el mensaje
+        mvhline(msg_y - 1, 0, ' ', term_w);
+        mvprintw(msg_y, msg_x, "%s", msg);
+        refresh();
+
+        // Asegura modo bloqueante y espera
+        nodelay(stdscr, FALSE);
+        getch();
+    }
+
+    endwin();
+    gs_close(gs, GS_BYTES);
+    gx_close(gx);
+
+    return 0;
+}
+
+
+
+//------------- funciones -------------------
+static void draw_rect(int y0, int x0, int h, int w, attr_t attr) {
     attron(attr);
     for (int r = 0; r < h; r++) {
         move(y0 + r, x0);
@@ -34,14 +112,14 @@ static inline void draw_rect(int y0, int x0, int h, int w, attr_t attr) {
     }
     attroff(attr);
 }
-static inline void draw_centered_char(int y0, int x0, int h, int w, attr_t attr, char ch) {
+static void draw_centered_char(int y0, int x0, int h, int w, attr_t attr, char ch) {
     int cy = y0 + h/2;
     int cx = x0 + (w-1)/2;
     attron(attr);
     mvaddch(cy, cx, ch);
     attroff(attr);
 }
-static inline void draw_box(int y0, int x0, int h, int w) {
+static void draw_box(int y0, int x0, int h, int w) {
     mvaddch(y0, x0, '+');
     mvaddch(y0, x0 + w - 1, '+');
     mvaddch(y0 + h - 1, x0, '+');
@@ -56,8 +134,7 @@ static inline void draw_box(int y0, int x0, int h, int w) {
     }
 }
 
-// ---- utils ----
-static void die(const char *fmt, ...) {
+static void die_ncurses(const char *fmt, ...) {
     endwin();
     va_list ap; va_start(ap, fmt);
     vfprintf(stderr, fmt, ap);
@@ -65,54 +142,24 @@ static void die(const char *fmt, ...) {
     fputc('\n', stderr);
     _exit(1);
 }
-static void sem_wait_intr(sem_t *s) {
-    for (;;) {
-        if (sem_wait(s) == 0) return;
-        if (errno != EINTR) die("sem_wait: %s", strerror(errno));
-    }
-}
 
-// Lectores–Escritores con preferencia al escritor (master)
-static void reader_enter(void) {
-    sem_wait_intr(&gx->writer_starvation_mutex);
-    sem_wait_intr(&gx->readers_count_lock);
-    gx->readers_count++;
-    if (gx->readers_count == 1) sem_wait_intr(&gx->state_write_lock);
-    if (sem_post(&gx->readers_count_lock) == -1) die("sem_post(readers_count_lock): %s", strerror(errno));
-    if (sem_post(&gx->writer_starvation_mutex) == -1) die("sem_post(writer_starvation_mutex): %s", strerror(errno));
-}
-static void reader_exit(void) {
-    sem_wait_intr(&gx->readers_count_lock);
-    if (gx->readers_count == 0) die("reader_exit: player underflow");
-    gx->readers_count--;
-    if (gx->readers_count == 0 && sem_post(&gx->state_write_lock) == -1) die("sem_post(state_write_lock): %s", strerror(errno));
-    if (sem_post(&gx->readers_count_lock) == -1) die("sem_post(readers_count_lock): %s", strerror(errno));
-}
-
-static inline int idx(int x, int y) { return y * (int)gs->width + x; }
-
-// --- colores (ASUME 256 colores; aborta si no hay) ---
-static bool g_has_color = false;
-
-// Paleta xterm-256 fija: 9 pares (cuerpo pastel / cabeza más intensa) por jugador A..I
-// Elegidos para ser distinguibles y mantener "misma familia" de color.
 static const short BODY_BG[9] = { 159, 114, 229, 183, 110, 217, 252, 223, 147 };
 static const short HEAD_BG[9] = {  51,  46, 220, 201,  21, 196, 231, 208,  93 };
-// Pares: 10..18 cuerpo, 20..28 cabeza, 30..38 ojos (fg negro sobre bg de cabeza)
-static inline int pair_body(int idx) { return COLOR_PAIR(10 + idx) | A_DIM; }
-static inline int pair_head(int idx) { return COLOR_PAIR(20 + idx) | A_BOLD; }
-static inline int pair_eyes(int idx) { return COLOR_PAIR(30 + idx) | A_BOLD; }
-static inline int pair_reward(void)   { return COLOR_PAIR(1) | A_DIM; }
+
+static int pair_body(int idx) { return COLOR_PAIR(10 + idx) | A_DIM; }
+static int pair_head(int idx) { return COLOR_PAIR(20 + idx) | A_BOLD; }
+static int pair_eyes(int idx) { return COLOR_PAIR(30 + idx) | A_BOLD; }
+static int pair_reward(void)   { return COLOR_PAIR(1) | A_DIM; }
 
 static void setup_colors(void) {
     g_has_color = has_colors();
-    if (!g_has_color) die("ncurses: no hay colores");
+    if (!g_has_color) die_ncurses("ncurses: no hay colores");
     start_color();
     use_default_colors();
     assume_default_colors(-1, -1);
 
     if (COLORS < 256)
-        die("Se requieren 256 colores (TERM=xterm-256color). COLORS=%d", COLORS);
+        die_ncurses("Se requieren 256 colores (TERM=xterm-256color). COLORS=%d", COLORS);
 
     // Recompensas: texto tenue sobre fondo default
     init_pair(1, COLOR_WHITE, -1);
@@ -126,7 +173,6 @@ static void setup_colors(void) {
     }
 }
 
-// ---- render ----
 static void render_board_and_stats(void) {
     unsigned short W = gs->width, H = gs->height;
     unsigned int np = gs->num_players; if (np > 9) np = 9;
@@ -155,7 +201,7 @@ static void render_board_and_stats(void) {
     // Pintar celdas
     for (int gy = 0; gy < (int)H; gy++) {
         for (int gx = 0; gx < (int)W; gx++) {
-            int v = gs->board[idx(gx, gy)];
+            int v = gs->board[idx_wh(gx, gy, gs->width)];
             int cell_y = grid_y0 + gy * CELL_H;
             int cell_x = grid_x0 + gx * CELL_W;
 
@@ -247,69 +293,4 @@ static void render_board_and_stats(void) {
     }
 
     refresh();
-}
-
-//------------- main -----------------------
-int main(int argc, char **argv) {
-    (void)argc; (void)argv;
-    // Fuerza 256 colores para esta vista, sin depender del shell del profe
-    setenv("TERM", "xterm-256color", 1);
-    
-    initscr();
-    cbreak();
-    noecho();
-    keypad(stdscr, TRUE);
-    curs_set(0);
-    setup_colors();  // aborta si no hay 256
-
-    // abrir shm (del master)
-    int fd_state = shm_open(SHM_STATE, O_RDONLY, 0);
-    if (fd_state == -1) die("shm_open(%s): %s", SHM_STATE, strerror(errno));
-    int fd_sync  = shm_open(SHM_SYNC,  O_RDWR,  0);
-    if (fd_sync  == -1) die("shm_open(%s): %s", SHM_SYNC,  strerror(errno));
-
-    struct stat st_state, st_sync;
-    if (fstat(fd_state, &st_state) == -1) die("fstat(state): %s", strerror(errno));
-    if (fstat(fd_sync,  &st_sync ) == -1) die("fstat(sync ): %s", strerror(errno));
-
-    gs = mmap(NULL, (size_t)st_state.st_size, PROT_READ,              MAP_SHARED, fd_state, 0);
-    if (gs == MAP_FAILED) die("mmap(state): %s", strerror(errno));
-    gx = mmap(NULL, (size_t)st_sync.st_size,  PROT_READ | PROT_WRITE, MAP_SHARED, fd_sync,  0);
-    if (gx == MAP_FAILED) die("mmap(sync): %s", strerror(errno));
-    close(fd_state);
-    close(fd_sync);
-
-    // loop de vista
-    for (;;) {
-        sem_wait_intr(&gx->state_changed);
-        reader_enter();
-        bool finished = gs->finished;
-        render_board_and_stats();
-        reader_exit();
-        if (sem_post(&gx->state_rendered) == -1) die("sem_post(state_rendered): %s", strerror(errno));
-        if (finished) break;
-    }
-
-    // --- mantener el estado final en pantalla hasta una tecla ---
-    // Bloquea en getch() para que el usuario pueda ver el estado final.
-    {
-        int term_h, term_w; getmaxyx(stdscr, term_h, term_w);
-        const char *msg = "Fin del juego. Presione cualquier tecla para continuar";
-        int msg_x = (term_w - (int)strlen(msg)) / 2; if (msg_x < 0) msg_x = 0;
-        int msg_y = term_h - 2; if (msg_y < 0) msg_y = 0;
-
-        // Dibujamos una línea “suave” y el mensaje
-        mvhline(msg_y - 1, 0, ' ', term_w);
-        mvprintw(msg_y, msg_x, "%s", msg);
-        refresh();
-
-        // Aseguramos modo bloqueante y esperamos
-        nodelay(stdscr, FALSE);
-        getch();
-    }
-
-    endwin();
-    if (gs) munmap(gs, (size_t)st_state.st_size);
-    if (gx) munmap(gx, (size_t)st_sync.st_size);
-    return 0;
 }

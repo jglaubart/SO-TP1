@@ -444,3 +444,47 @@ make run
 make
 make run
 exit
+make
+make run
+make clean
+exit
+make
+make run
+exit
+make
+make
+make
+make
+make clean
+make
+make
+make
+make
+make
+make run
+make run
+make run
+exit
+make
+clear
+make
+make
+make clean
+make
+make run
+make
+make
+make run
+make
+make
+clear
+make
+make
+make
+make
+make
+make
+make
+make
+make run
+exit
