@@ -1,74 +1,3 @@
-cd /rot
-cd /root
-ls
-echo "# TP1 Sistemas Operativos" > README.md
-git add README.md
-git commit -m "Commit inicial"
-git push origin main
-echo "# TP1 Sistemas Operativos" > README.md
-git add README.md
-git commit -m "Commit inicial"
-exit
-ls
-cd root
-ls
-cat README.md 
-cd ..
-cd home
-ls
-ls -a
-..
-cd ..
-l
-ls
-cd usr
-s
-s
-l
-sls
-ls
-cd ..
-ls
-exit
-l
-sls
-ls
-cd root
-ls
-exit
-ls
-cd root
-ls
-exit
-ls
-exit
-exit
-exit
-exit
-ls
-cd root
-ls
-nano p.c
-vim p.c
-ls
-exit
-ls
-exir
-exit
-ls
-cd root
-ls
-./ChompChamps 
-ls -l
-./ChompChamps 
-./ChompChamps -p 1
-./ChompChamps -p 1
-./ChompChamps -p 1 2 3
-./ChompChamps -p j1 j2 j3
-./ChompChamps -p j1 j2 j3
-./ChompChamps -p j1 j2 j3
-exit
-ls
 cd root
 ls
 cd src
@@ -487,4 +416,85 @@ make
 make
 make
 make run
+exit
+ls
+cd root
+ls
+cd tp1-so/
+make
+make master
+vim Makefile
+ls
+exit
+ls
+make
+ls
+make run
+make
+make run
+make
+make
+make
+make run
+make clean
+make
+make run
+make
+make run
+make run
+make clean
+exit'
+exit
+make
+make
+make
+make
+make
+make
+make
+make run
+make run
+make run
+make
+make run
+make run
+make
+cd root
+make run
+make
+make run
+make clean
+exit
+make
+cd root
+make
+make clean
+exit
+cd root
+make
+make run
+make clean
+make
+make run
+make
+make run
+make run
+make
+make run
+make
+make run
+make
+make run
+make
+make run
+make
+make run
+make
+make run
+make
+make run
+make run
+make
+make run
+make clean
 exit

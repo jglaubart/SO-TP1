@@ -20,7 +20,7 @@ typedef enum {
     STRAT_RANDOM_TIEBREAK       // igual a greedy pero rompe empates al azar
 } strategy_t;
 
-// Decide estrategia inicial dado tablero/jugadores/mi índice
+// Decide estrategia inicial dado tablero/jugadores/índice
 strategy_t choose_strategy(unsigned short W, unsigned short H, unsigned int num_players, int myi);
 
 // ¿Conviene pasar a endgame?
@@ -29,4 +29,4 @@ bool should_switch_to_endgame(unsigned int free_cells, unsigned int total_cells)
 // API principal: dir 0..7 o 255 si no hay jugada válida
 unsigned char pick_move_strategy(strategy_t strat, const game_state_t *gs, int player_idx);
 
-#endif // PLAYER_STRATEGIES_H
+#endif

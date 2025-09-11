@@ -26,13 +26,13 @@ int gx_create_and_init(game_sync_t **gx_out)
     memset(gx, 0, sizeof(*gx));
 
     /* sem_init(pshared=1) */
-    if (sem_init(&gx->state_changed,           1, 0) == -1) return -1;
-    if (sem_init(&gx->state_rendered,          1, 0) == -1) return -1;
+    if (sem_init(&gx->state_changed, 1, 0) == -1) return -1;
+    if (sem_init(&gx->state_rendered, 1, 0) == -1) return -1;
     if (sem_init(&gx->writer_starvation_mutex, 1, 1) == -1) return -1;
-    if (sem_init(&gx->state_write_lock,        1, 1) == -1) return -1;
-    if (sem_init(&gx->readers_count_lock,      1, 1) == -1) return -1;
+    if (sem_init(&gx->state_write_lock, 1, 1) == -1) return -1;
+    if (sem_init(&gx->readers_count_lock, 1, 1) == -1) return -1;
     gx->readers_count = 0;
-    for (int i = 0; i < 9; ++i)
+    for (int i = 0; i < MAXP; ++i)
         if (sem_init(&gx->movement[i], 1, 0) == -1) return -1;
 
     *gx_out = gx;
@@ -73,7 +73,7 @@ void gx_destroy_sems(game_sync_t *gx)
     sem_destroy(&gx->writer_starvation_mutex);
     sem_destroy(&gx->state_write_lock);
     sem_destroy(&gx->readers_count_lock);
-    for (int i = 0; i < 9; ++i) sem_destroy(&gx->movement[i]);
+    for (int i = 0; i < MAXP; ++i) sem_destroy(&gx->movement[i]);
 }
 
 int sem_wait_intr(sem_t *s)
@@ -136,12 +136,12 @@ void sync_notify_view_and_delay(game_sync_t *gx, bool has_view, int delay_ms,
 /* Turnos de jugador */
 int sync_allow_one_move(game_sync_t *gx, int i)
 {
-    if (!gx || i < 0 || i >= 9) return -1;
+    if (!gx || i < 0 || i >= MAXP) return -1;
     return sem_post(&gx->movement[i]);
 }
 
 int sync_wait_my_turn(game_sync_t *gx, int i)
 {
-    if (!gx || i < 0 || i >= 9) return -1;
+    if (!gx || i < 0 || i >= MAXP) return -1;
     return sem_wait_intr(&gx->movement[i]);
 }

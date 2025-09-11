@@ -69,7 +69,7 @@ static int cutoff_score(const game_state_t *gs, int me, int nx, int ny) {
     return - (impact / cnt); // menos movilidad rival es mejor
 }
 
-// 2-ply liviano: evalúa mis 8 jugadas, para cada una calcula mi movilidad resultante
+// 2-ply liviano: evalúa 8 jugadas, para cada una calcula mi movilidad resultante
 static int two_ply_light_score(const game_state_t *gs, int nx, int ny) {
     return mobility_from(gs, nx, ny) * 5 + cell_value(gs, nx, ny);
 }

@@ -31,7 +31,7 @@ static void draw_box(int y0, int x0, int h, int w);
 // ---- utils ----
 static void die_ncurses(const char *fmt, ...) __attribute__((noreturn));
 
-// Pares: 10..18 cuerpo, 20..28 cabeza, 30..38 ojos (fg negro sobre bg de cabeza)
+// Pares: 10..18 cuerpo, 20..28 cabeza, 30..38 ojos
 static int pair_body(int idx);
 static int pair_head(int idx);
 static int pair_eyes(int idx);
@@ -51,50 +51,52 @@ static void render_board_and_stats(void);
 //========================= main ========================= 
 int main(int argc, char **argv) {
     (void)argc; (void)argv;
-    // Fuerza 256 colores para esta vista
+    // Fuerza ncurses con 256 colores para la vista
     setenv("TERM", "xterm-256color", 1);
     
-    initscr();
+    initscr();  // comienza ncurses
     cbreak();
     noecho();
     keypad(stdscr, TRUE);
-    curs_set(0);
-    setup_colors();  // aborta si no hay 256
+    curs_set(0); 
+    setup_colors();  // inicia paleta de colores, aborta si no hay 256
 
+    // conecta memorias compartidas
     size_t GS_BYTES = 0;
     if (gs_open_ro(&gs, &GS_BYTES) != 0) die_ncurses("gs_open_ro: %s", strerror(errno));
     if (gx_open_rw(&gx) != 0) die_ncurses("gx_open_rw: %s", strerror(errno));
 
     // loop de vista
     for (;;) {
-        sem_wait_intr(&gx->state_changed);
+        sem_wait_intr(&gx->state_changed); //master lo despierta por cambios
         reader_enter(gx);
         bool finished = gs->finished;
-        render_board_and_stats();
+        render_board_and_stats();  //actualiza tablero
         reader_exit(gx);
         if (sem_post(&gx->state_rendered) == -1) die_ncurses("sem_post(state_rendered): %s", strerror(errno));
         if (finished) break;
     }
 
-    // --- mantener el estado final en pantalla hasta una tecla ---
     // Bloquea en getch() para que el usuario pueda ver el estado final.
     {
-        int term_h, term_w; getmaxyx(stdscr, term_h, term_w);
+        int term_h, term_w; 
+        getmaxyx(stdscr, term_h, term_w);
         const char *msg = "Fin del juego. Presione cualquier tecla para continuar";
-        int msg_x = (term_w - (int)strlen(msg)) / 2; if (msg_x < 0) msg_x = 0;
-        int msg_y = term_h - 2; if (msg_y < 0) msg_y = 0;
+        int msg_x = (term_w - (int)strlen(msg)) / 2; 
+        if (msg_x < 0) msg_x = 0;
+        int msg_y = term_h - 2; 
+        if (msg_y < 0) msg_y = 0;
 
-        // Dibuja una línea “suave” y el mensaje
+        // Dibuja una línea y el mensaje
         mvhline(msg_y - 1, 0, ' ', term_w);
         mvprintw(msg_y, msg_x, "%s", msg);
         refresh();
 
-        // Asegura modo bloqueante y espera
         nodelay(stdscr, FALSE);
         getch();
     }
 
-    endwin();
+    endwin();  //finaliza ncurses
     gs_close(gs, GS_BYTES);
     gx_close(gx);
 
@@ -164,31 +166,35 @@ static void setup_colors(void) {
     // Recompensas: texto tenue sobre fondo default
     init_pair(1, COLOR_WHITE, -1);
 
+    init_pair(2, COLOR_RED, -1); // Rojo sobre fondo default
+
     // Definir pares de cuerpo/cabeza/ojos para 9 jugadores
     for (int i = 0; i < 9; i++) {
         init_pair(10 + i, COLOR_BLACK, BODY_BG[i]);  // cuerpo (pastel)
         init_pair(20 + i, COLOR_BLACK, HEAD_BG[i]);  // cabeza (más intensa)
         init_pair(30 + i, COLOR_BLACK, HEAD_BG[i]);  // ojos negros sobre cabeza
-        init_pair(2, COLOR_RED, -1); // Rojo sobre fondo default
     }
 }
 
 static void render_board_and_stats(void) {
+    // lee informacion de la partida
     unsigned short W = gs->width, H = gs->height;
-    unsigned int np = gs->num_players; if (np > 9) np = 9;
+    unsigned int np = gs->num_players; 
+    if (np > 9) np = 9;
 
     // Dimensiones del tablero en caracteres
     int grid_w = (int)W * CELL_W;
     int grid_h = (int)H * CELL_H;
 
     // Tamaño pantalla y centrado
-    int term_h, term_w; getmaxyx(stdscr, term_h, term_w);
+    int term_h, term_w; 
+    getmaxyx(stdscr, term_h, term_w);
     int box_w = grid_w + 2, box_h = grid_h + 2;
 
     int top  = (term_h - (box_h + 2 + (int)np)) / 2; if (top  < 0) top  = 0;
     int left = (term_w -  box_w) / 2;                 if (left < 0) left = 0;
 
-    clear();
+    clear(); 
     mvprintw(top > 0 ? top - 1 : 0, left, "ChompChamps  %hux%hu", W, H);
 
     // Marco tablero
@@ -201,24 +207,27 @@ static void render_board_and_stats(void) {
     // Pintar celdas
     for (int gy = 0; gy < (int)H; gy++) {
         for (int gx = 0; gx < (int)W; gx++) {
-            int v = gs->board[idx_wh(gx, gy, gs->width)];
+            int v = gs->board[idx_wh(gx, gy, gs->width)]; //valor de la celda
             int cell_y = grid_y0 + gy * CELL_H;
             int cell_x = grid_x0 + gx * CELL_W;
 
-            if (v > 0) {
-                draw_rect(cell_y, cell_x, CELL_H, CELL_W, A_NORMAL);
-                draw_centered_char(cell_y, cell_x, CELL_H, CELL_W, pair_reward(), (char)('0' + (v % 10)));
-            } else {
-                int owner = -v; if (owner < 0) owner = 0; if (owner > 8) owner = 8;
-                draw_rect(cell_y, cell_x, CELL_H, CELL_W, pair_body(owner));
+            if (v > 0) { //celda libre
+                draw_rect(cell_y, cell_x, CELL_H, CELL_W, A_NORMAL); //limpia el fondo
+                draw_centered_char(cell_y, cell_x, CELL_H, CELL_W, pair_reward(), (char)('0' + (v % 10))); //imprime valor
+            } else { //celda ocupada
+                int owner = -v; 
+                if (owner < 0) owner = 0; 
+                if (owner > 8) owner = 8;
+                draw_rect(cell_y, cell_x, CELL_H, CELL_W, pair_body(owner)); //pinta con color del jugador
             }
         }
     }
 
-    // Cabezas + ojos (encima del cuerpo)
+    // Dibuja cabezas + ojos
     for (unsigned int i = 0; i < np; i++) {
         const player_t *p = &gs->players[i];
-        if (p->blocked) continue;
+        char eye = '.';
+        if (p->blocked) eye = 'x';   //ojos de jugador bloqueado
 
         int cell_y = grid_y0 + (int)p->y * CELL_H;
         int cell_x = grid_x0 + (int)p->x * CELL_W;
@@ -229,18 +238,18 @@ static void render_board_and_stats(void) {
         // ojos negros centrados
         int cy = cell_y + CELL_H/2;
         int mid = cell_x + CELL_W/2;
-        int ex1 = (CELL_W >= 4) ? (mid - 1) : cell_x;
-        int ex2 = (CELL_W >= 4) ? (mid)     : (cell_x + CELL_W - 1);
-        if (ex1 < cell_x) ex1 = cell_x;
-        if (ex2 >= cell_x + CELL_W) ex2 = cell_x + CELL_W - 1;
+        int x1 = (CELL_W >= 4) ? (mid - 1) : cell_x ;
+        int x2 = (CELL_W >= 4) ? (mid) : (cell_x + CELL_W - 1);
+        if (x1 < cell_x) x1 = cell_x;
+        if (x2 >= cell_x + CELL_W) x2 = cell_x + CELL_W - 1;
 
         attron(pair_eyes((int)i));
-        mvaddch(cy, ex1, '.');
-        mvaddch(cy, ex2, '.');
+        mvaddch(cy, x1, eye);
+        mvaddch(cy, x2, eye);
         attroff(pair_eyes((int)i));
     }
 
-    // === Stats abajo, centradas y con marco ===
+    // Stats abajo
     char buf[256];
     int max_linew = 0;
     for (unsigned int i = 0; i < np; i++) {
@@ -292,5 +301,5 @@ static void render_board_and_stats(void) {
         rstats++;
     }
 
-    refresh();
+    refresh();  //imprime
 }

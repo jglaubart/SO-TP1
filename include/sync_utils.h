@@ -1,3 +1,6 @@
+#ifndef SYNC_UTILS_H
+#define SYNC_UTILS_H
+
 #pragma once
 #include <semaphore.h>
 #include <signal.h>
@@ -5,6 +8,7 @@
 
 /* ===== Segmento de SINCRONIZACIÓN ===== */
 #define SHM_SYNC "/game_sync"
+#define MAXP 9
 
 typedef struct {
     sem_t state_changed;            /* A: máster → vista — hay cambios */
@@ -13,7 +17,7 @@ typedef struct {
     sem_t state_write_lock;         /* D: exclusión de escritura sobre el estado */
     sem_t readers_count_lock;       /* E: mutex del contador de lectores */
     unsigned int readers_count;     /* F: # lectores activos (jugadores/vista) */
-    sem_t movement[9];              /* G[i]: permiso a jugador i para 1 movimiento */
+    sem_t movement[MAXP];              /* G[i]: permiso a jugador i para 1 movimiento */
 } game_sync_t;
 
 /* ============ API sync (SHM /game_sync) ============ */
@@ -38,9 +42,10 @@ void writer_enter(game_sync_t *gx);
 void writer_exit (game_sync_t *gx);
 
 /* ===== Máster ↔ Vista + delay ===== */
-void sync_notify_view_and_delay(game_sync_t *gx, bool has_view, int delay_ms,
-                                volatile sig_atomic_t *g_stop);
+void sync_notify_view_and_delay(game_sync_t *gx, bool has_view, int delay_ms,volatile sig_atomic_t *g_stop);
 
 /* ===== Turnos jugador (G[i]) ===== */
 int  sync_allow_one_move(game_sync_t *gx, int i); /* post movement[i] */
 int  sync_wait_my_turn  (game_sync_t *gx, int i); /* wait movement[i] */
+
+#endif

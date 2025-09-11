@@ -11,10 +11,10 @@
 # hlsearch on (H) or off (h):
 ~h
 # Command Line History (newest to oldest):
+:q!
+|2,0,1757469904,,"q!"
 :wq
 |2,0,1756811201,,"wq"
-:q!
-|2,0,1755196655,,"q!"
 
 # Search String History (newest to oldest):
 
@@ -27,22 +27,40 @@
 # Registers:
 
 # File marks:
-'0  83  29  ~/Makefile
-|4,48,83,29,1756811201,"~/Makefile"
-'1  1  0  ~/p.c
-|4,49,1,0,1755196655,"~/p.c"
+'0  31  0  ~/tp1-so/Makefile
+|4,48,31,0,1757469904,"~/tp1-so/Makefile"
+'1  83  29  ~/Makefile
+|4,49,83,29,1756811201,"~/Makefile"
+'2  1  0  ~/p.c
+|4,50,1,0,1755196655,"~/p.c"
 
 # Jumplist (newest first):
+-'  31  0  ~/tp1-so/Makefile
+|4,39,31,0,1757469904,"~/tp1-so/Makefile"
+-'  1  0  ~/tp1-so/Makefile
+|4,39,1,0,1757469862,"~/tp1-so/Makefile"
 -'  83  29  ~/Makefile
 |4,39,83,29,1756811201,"~/Makefile"
+-'  83  29  ~/Makefile
+|4,39,83,29,1756811201,"~/Makefile"
+-'  1  0  ~/Makefile
+|4,39,1,0,1756811155,"~/Makefile"
 -'  1  0  ~/Makefile
 |4,39,1,0,1756811155,"~/Makefile"
 -'  1  0  ~/p.c
 |4,39,1,0,1755196655,"~/p.c"
 -'  1  0  ~/p.c
 |4,39,1,0,1755196655,"~/p.c"
+-'  1  0  ~/p.c
+|4,39,1,0,1755196655,"~/p.c"
+-'  1  0  ~/p.c
+|4,39,1,0,1755196655,"~/p.c"
 
 # History of marks within files (newest to oldest):
+
+> ~/tp1-so/Makefile
+	*	1757469902	0
+	"	31	0
 
 > ~/Makefile
 	*	1756811199	0

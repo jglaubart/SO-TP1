@@ -4,9 +4,17 @@
 #include <fcntl.h>
 #include <errno.h>
 
-/* die genérica (sin ncurses) */
-void die(const char *fmt, ...)
-{
+/*die con exit*/
+void die(const char *fmt, ...){
+    va_list ap; va_start(ap, fmt);
+    vfprintf(stderr, fmt, ap);
+    va_end(ap);
+    fputc('\n', stderr);
+    exit(1);
+}
+
+/*die con _exit para procesos hijos*/
+void die_fast(const char *fmt, ...){
     va_list ap; va_start(ap, fmt);
     vfprintf(stderr, fmt, ap);
     va_end(ap);
@@ -14,13 +22,13 @@ void die(const char *fmt, ...)
     _exit(1);
 }
 
+
+
 /* helpers procesos/FD */
-const char* base_name(const char *path)
-{
+const char* base_name(const char *path){
     const char *s = strrchr(path, '/'); return s ? s + 1 : path;
 }
-void set_cloexec(int fd, int on)
-{
+void set_cloexec(int fd, int on){
     int flags = fcntl(fd, F_GETFD);
     if (flags == -1) die("fcntl(F_GETFD): %s", strerror(errno));
     if (on) flags |= FD_CLOEXEC; else flags &= ~FD_CLOEXEC;
@@ -31,9 +39,8 @@ void set_cloexec(int fd, int on)
 const int DX[8] = { 0, 1, 1, 1, 0,-1,-1,-1 };
 const int DY[8] = {-1,-1, 0, 1, 1, 1, 0,-1 };
 
-/* protocolo 1 byte (robustos a EINTR/EAGAIN) */
-int proto_read_dir(int fd, unsigned char *dir_out)
-{
+/* protocolo 1 byte (EINTR/EAGAIN) */
+int proto_read_dir(int fd, unsigned char *dir_out){
     if (!dir_out) return -1;
     for (;;) {
         ssize_t r = read(fd, dir_out, 1);
@@ -45,8 +52,7 @@ int proto_read_dir(int fd, unsigned char *dir_out)
     }
 }
 
-int proto_write_dir(int fd, unsigned char dir)
-{
+int proto_write_dir(int fd, unsigned char dir){
     const unsigned char b = dir;
     for (;;) {
         ssize_t w = write(fd, &b, 1);
