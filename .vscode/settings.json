@@ -5,6 +5,9 @@
         "unistd.h": "c",
         "stdbool.h": "c",
         "sync_utils.h": "c",
-        "errno.h": "c"
+        "errno.h": "c",
+        "master_helper.h": "c",
+        "time.h": "c",
+        "fcntl.h": "c"
     }
 }

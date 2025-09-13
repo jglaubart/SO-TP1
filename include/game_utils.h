@@ -2,22 +2,20 @@
 #define GAME_UTILS_H
 
 #pragma once
-#include <stdarg.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <unistd.h>
 
-/* ===== errores/señales genéricos ===== */
+/* Errores/señales genéricos */
 void die(const char *fmt, ...) __attribute__((noreturn, format(printf,1,2)));
 void die_fast(const char *fmt, ...) __attribute__((noreturn, format(printf,1,2)));
 
-/* ===== procesos/FD ===== */
+/* Procesos/FD */
 //devuelve el último componente del path
 const char* base_name(const char *path);
 // setea/limpia el flag FD_CLOEXEC
 void set_cloexec(int fd, int on);
 
-/* ===== geometría del tablero ===== */
+/* Geometría del tablero */
 extern const int DX[8];
 extern const int DY[8];
 typedef enum {
@@ -32,7 +30,7 @@ static inline int idx_wh(int x, int y, int W){
     return y * W + x;
 }
 
-/* ===== protocolo por pipe: 1 byte dirección (0..7) ===== */
+/* Protocolo por pipe: 1 byte dirección (0..7) */
 int  proto_read_dir (int fd, unsigned char *dir_out);
 int  proto_write_dir(int fd, unsigned char dir);
 static inline int dir_is_valid(unsigned char d){ return d <= 7; }

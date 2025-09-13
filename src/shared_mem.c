@@ -12,6 +12,9 @@
 
 int gs_create_and_init(int W, int H, unsigned nplayers,game_state_t **gs_out, size_t *gs_bytes_out){
     if (!gs_out || !gs_bytes_out) return -1;
+    if (W <= 0 || H <= 0) return -1;
+    if (nplayers == 0 || nplayers > 9) return -1;
+    if ((size_t)W * (size_t)H > 10000u) return -1;
     *gs_out = NULL; *gs_bytes_out = 0;
 
     size_t bytes = sizeof(game_state_t) + (size_t)W * (size_t)H * sizeof(int);
@@ -48,6 +51,7 @@ int gs_open_ro(game_state_t **gs_out, size_t *gs_bytes_out)
 
     struct stat st;
     if (fstat(fd, &st) == -1) { close(fd); return -1; }
+    if ((size_t)st.st_size < sizeof(game_state_t)) { close(fd); return -1; }
 
     game_state_t *gs = mmap(NULL, (size_t)st.st_size, PROT_READ, MAP_SHARED, fd, 0);
     close(fd);

@@ -236,7 +236,7 @@ static void render_board_and_stats(void) {
         draw_rect(cell_y, cell_x, CELL_H, CELL_W, pair_head((int)i));
 
         // ojos negros centrados
-        int cy = cell_y + CELL_H/2;
+        int cy = cell_y + CELL_H/4;
         int mid = cell_x + CELL_W/2;
         int x1 = (CELL_W >= 4) ? (mid - 1) : cell_x ;
         int x2 = (CELL_W >= 4) ? (mid) : (cell_x + CELL_W - 1);
@@ -292,9 +292,9 @@ static void render_board_and_stats(void) {
             attron(COLOR_PAIR(2) | A_BOLD);
         }
         mvprintw(rstats, inner_left + 3,
-                 "%c name=%-10s pid=%-6d score=%-4u valid=%-3u invalid=%-3u pos=(%u,%u) %s",
-                 'A' + (int)i, p->name, p->pid, p->score, p->valid_moves, p->invalid_moves,
-                 (unsigned)p->x, (unsigned)p->y, p->blocked ? "blk" : "   ");
+                 "%c name=%-7s ID=%-2d score=%-4u valid=%-3u invalid=%-3u pos=(%u,%u) %s",
+                 'A' + (int)i, p->name, (int)i, p->score, p->valid_moves, p->invalid_moves,
+                 (unsigned)p->x, (unsigned)p->y, p->blocked ? "Blocked" : "Active");
          if (p->blocked) {
             attroff(COLOR_PAIR(2) | A_BOLD);
         }

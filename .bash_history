@@ -1,25 +1,3 @@
-cd root
-ls
-cd src
-gcc -std=c11 -Wall -Wextra -Werror -O2 -o player player.c -pthread
-gcc -std=c11 -Wall -Wextra -Werror -O2 -o player player.c -pthread
-exit
-ls
-cd root
-ls
-apt-get update && apt-get install -y valgrind
-valgrind --leak-check=full ./player 10 10
-valgrind --leak-check=full ./masterCatedra -w 10 -h 10 -d 200 -t 10 -p ./player ./player
-ls
-cd src
-valgrind --leak-check=full ./player 10 10
-valgrind --leak-check=full ./masterCatedra -w 10 -h 10 -d 200 -t 10 -p ./player ./player
-cd ..
-apt-get install -y pvs-studio
-pvs-studio-analyzer --version
-wget -q -O - https://files.viva64.com/etc/pubkey.txt | apt-key add -
-echo "deb http://repo.viva64.com/stable/deb/debian $(lsb_release -cs) main" > /etc/apt/sources.list.d/viva64.list
-apt-get update
 wget -q -O - https://files.viva64.com/etc/pubkey.txt | apt-key add -
 echo "deb http://repo.viva64.com/stable/deb/debian $(lsb_release -cs) main" > /etc/apt/sources.list.d/viva64.list
 apt-get update
@@ -496,5 +474,27 @@ make run
 make run
 make
 make run
+make clean
+exit
+make
+clear
+make run
+make run
+wxir
+exit
+make
+cd root
+make
+make run
+make clean
+make
+make clean
+make
+make clean
+make
+make clean
+make
+make run
+make clea
 make clean
 exit

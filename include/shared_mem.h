@@ -6,10 +6,10 @@
 #include <sys/types.h>
 #include <stddef.h>
 
-/* ===== Segmento de ESTADO del juego ===== */
+//Segmento de ESTADO del juego 
 #define SHM_STATE "/game_state"
 
-/* Información de un jugador (igual a tu structs.h, sin cambios de campos) */
+//Información de un jugador (igual a tu structs.h, sin cambios de campos)
 typedef struct {
     char name[16];
     unsigned int score;
@@ -20,17 +20,17 @@ typedef struct {
     bool blocked;
 } player_t;
 
-/* Estado global del juego (flexible array al final) */
+// Estado global del juego (flexible array al final)
 typedef struct {
     unsigned short width;
     unsigned short height;
-    unsigned int   num_players;   /* <= 9 */
-    player_t       players[9];
-    bool           finished;
-    int            board[];       /* fila-0, fila-1, ..., fila-(h-1) */
+    unsigned int num_players;   /* <= 9 */
+    player_t players[9];
+    bool finished;
+    int board[];       /* fila-0, fila-1, ..., fila-(h-1) */
 } game_state_t;
 
-/* ============ API estado (SHM /game_state) ============ */
+/* API estado (SHM /game_state) */
 
 /* Crea, trunca e inicializa el estado (solo master). Devuelve 0 si ok. */
 int gs_create_and_init(int W, int H, unsigned nplayers, game_state_t **gs_out, size_t *gs_bytes_out);
@@ -47,7 +47,7 @@ void gs_init_board_rewards(int *board, int W, int H, unsigned seed);
 /* Embaraja y posiciona jugadores en celdas libres */
 int gs_place_players(game_state_t *gs); /* usa width/height/num_players/board */
 
-/* ===== queries/ops sobre el estado ===== */
+/* Queries/ops sobre el estado */
 bool gs_has_valid_move_from(const game_state_t *gs, int x, int y);
 bool gs_any_player_can_move(const game_state_t *gs);
 void gs_mark_blocked_players(game_state_t *gs);
