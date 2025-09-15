@@ -1,4 +1,6 @@
-// src/view.c
+// This is a personal academic project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++, C#, and Java: https://pvs-studio.com
+// This is a personal academic project. Dear PVS-Studio, please check it.
 #define _DEFAULT_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
@@ -216,7 +218,6 @@ static void render_board_and_stats(void) {
                 draw_centered_char(cell_y, cell_x, CELL_H, CELL_W, pair_reward(), (char)('0' + (v % 10))); //imprime valor
             } else { //celda ocupada
                 int owner = -v; 
-                if (owner < 0) owner = 0; 
                 if (owner > 8) owner = 8;
                 draw_rect(cell_y, cell_x, CELL_H, CELL_W, pair_body(owner)); //pinta con color del jugador
             }

@@ -1,76 +1,3 @@
-wget -q -O - https://files.viva64.com/etc/pubkey.txt | apt-key add -
-echo "deb http://repo.viva64.com/stable/deb/debian $(lsb_release -cs) main" > /etc/apt/sources.list.d/viva64.list
-apt-get update
-apt-get install -y pvs-studio
-clear
-rm -f /etc/apt/sources.list.d/viva64.list
-apt-get update
-apt-get install -y gnupg ca-certificates wget lsb-release
-wget -q -O - https://files.viva64.com/etc/pubkey.txt | gpg --dearmor -o /usr/share/keyrings/pvs.gpg
-. /etc/os-release
-echo "deb [signed-by=/usr/share/keyrings/pvs.gpg] http://repo.viva64.com/stable/deb/debian $VERSION_CODENAME main" > /etc/apt/sources.list.d/viva64.list
-apt-get update
-exit
-ls
-cd root
-ls
-cd ..
-exit
-apt-get update
-apt-get install -y libncurses-dev
-exit
-make clean
-cd root
-make clean
-make inner-build
-exir
-exit
-ls
-cd root
-ls
-./master -w 10 -h 10 -d 200 -t 10 -v ./view -p ./player_greedy ./player_greedy ./player_greedy
-exit
-ls
-cd root
-cd src
-ls
-./master -w 10 -h 10 -d 200 -t 10 -v ./view -p ./player_greedy ./player_greedy ./player_greedy
-clear
-exir
-exit
-ls
-cd root
-ls
-cd src
-ls
-./masterCatedra -w 10 -h 10 -d 200 -t 10 -v ./view -p ./player_greedy ./player_greedy ./player_greedy
-exit
-ls
-cd root
-ls
-exit
-ls
-cd root
-ls
-make
-make
-make
-make runcat
-exit
-cd root
-make
-make run
-make run
-make run
-make clean
-make
-make run
-clear
-make run
-make clean
-make
-make run
-make clean
 make
 make run
 make runcat
@@ -497,4 +424,77 @@ make
 make run
 make clea
 make clean
+exit
+cd root
+make clean all
+make clean all
+make clean
+exit
+clear
+ls
+cd rot
+cd root
+pvs-studio-analyzer --version
+docker ps
+exitr
+exit
+cat /etc/issue
+docker inspect <container_name_or_id> | grep Image
+exit
+cd root
+ls
+make clean
+make -j4
+exit
+cd root
+ls
+pvs-studio-analyzer --version
+plog-converter --version
+apt-get update
+clear
+apt-get update
+apt-get update
+apt-get install -y wget ca-certificates gnupg lsb-release
+CLEAR
+clear
+ls -l /etc/apt/sources.list.d || true
+clear
+grep -RniE 'viva64|repo\.viva64|files\.viva64' /etc/apt /etc/apt/sources.list.d 2>/dev/null || true
+rm -f /etc/apt/sources.list.d/viva64.list
+wget -qO- https://files.viva64.com/etc/pubkey.txt | gpg --dearmor > /usr/share/keyrings/viva64.gpg
+echo "deb [signed-by=/usr/share/keyrings/viva64.gpg] https://files.viva64.com/deb stable main" > /etc/apt/sources.list.d/viva64.list
+echo "deb [signed-by=/usr/share/keyrings/viva64.gpg] https://files.viva64.com/deb stable main" > /etc/apt/sources.list.d/viva64.list
+apt-get update
+wget -O /etc/apt/sources.list.d/viva64.list https://files.pvs-studio.com/etc/viva64.list
+make
+make run
+apt-get update
+clear
+exi
+exit
+apt-get update
+make clean
+cd root
+make clean
+apt-get update
+clear
+grep -RniE 'pvs|viva64|cdn\.pvs-studio\.com' /etc/apt/sources.list /etc/apt/sources.list.d 2>/dev/null || true
+rm -f /etc/apt/sources.list.d/viva64.list
+wget -q -O - https://files.viva64.com/etc/pubkey.txt | gpg --dearmor -o /usr/share/keyrings/pvs.gpg
+echo "deb [signed-by=/usr/share/keyrings/pvs.gpg] http://repo.viva64.com/stable/deb/debian bookworm main" > /etc/apt/sources.list.d/viva64.list
+apt-get update
+printf "deb [signed-by=/usr/share/keyrings/pvs.gpg] https://repo.viva64.com/stable/deb/debian bookworm main\ndeb [signed-by=/usr/share/keyrings/pvs.gpg] https://cdn.pvs-studio.com/deb viva64-release pvs-studio\n" > /etc/apt/sources.list.d/viva64.list
+apt-get update
+exit
+apt-get update
+exit
+make
+cd root
+make
+make
+make
+make
+exit
+make
+make
 exit

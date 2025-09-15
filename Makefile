@@ -43,7 +43,7 @@ $(DEPS_STAMP):
 	else \
 	  echo "Dependencias ncurses ya presentes"; \
 	fi; \
-	# Garantizar terminfo xterm-256color
+	# Garantizar xterm-256color
 	if ! infocmp xterm-256color >/dev/null 2>&1; then \
 	  echo "Instalando terminfo xterm-256color (ncurses-term)..."; \
 	  apt-get update && apt-get install -y ncurses-term; \

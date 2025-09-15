@@ -1,3 +1,6 @@
+// This is a personal academic project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++, C#, and Java: https://pvs-studio.com
+// This is a personal academic project. Dear PVS-Studio, please check it.
 #define _DEFAULT_SOURCE
 #include "game_utils.h"
 #include <string.h>
@@ -46,10 +49,12 @@ int proto_read_dir(int fd, unsigned char *dir_out){
     if (!dir_out) return -1;
     for (;;) {
         ssize_t r = read(fd, dir_out, 1);
-        if (r == 1) return 0;         // ok
-        if (r == 0) return 1;         // EOF
-        if (r < 0 && (errno == EINTR)) continue;
-        if (r < 0 && (errno == EAGAIN)) { usleep(1000); continue; }
+        if (r == 1) {return 0;}         // ok
+        else if (r == 0) {return 1;}        // EOF
+        else{
+            if(errno == EINTR)continue;
+            if (errno == EAGAIN) { usleep(1000); continue; }
+        } 
         return -1;                    // error
     }
 }
@@ -58,9 +63,11 @@ int proto_write_dir(int fd, unsigned char dir){
     const unsigned char b = dir;
     for (;;) {
         ssize_t w = write(fd, &b, 1);
-        if (w == 1) return 0;         // ok
-        if (w < 0 && (errno == EINTR)) continue;
-        if (w < 0 && (errno == EAGAIN)) { usleep(1000); continue; }
+        if (w == 1){ return 0; }       // ok
+        else{
+            if(errno == EINTR) continue;
+            if (errno == EAGAIN){ usleep(1000); continue; }
+        }
         return -1;                    // error
     }
 }

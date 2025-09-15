@@ -1,4 +1,6 @@
-// player.c
+// This is a personal academic project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++, C#, and Java: https://pvs-studio.com
+// This is a personal academic project. Dear PVS-Studio, please check it.
 #define _DEFAULT_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
