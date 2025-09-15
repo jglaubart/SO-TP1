@@ -1,0 +1,17 @@
+# Binarios
+master
+player
+view
+
+# Objetos
+*.o
+
+# Carpetas temporales
+.vscode/
+build/
+test/
+
+# Otros
+*.log
+*.out
+*.bak

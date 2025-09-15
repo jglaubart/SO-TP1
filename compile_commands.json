@@ -1,9 +1,0 @@
-[
-  { "directory": "/workspace", "command": "gcc -std=c11 -Wall -Wextra -Werror -O2 -pthread -D_POSIX_C_SOURCE=200809L -D_DEFAULT_SOURCE -I./include -I./src -I. -c src/game_utils.c -o .pvs-objects/game_utils.o", "file": "src/game_utils.c" },
-  { "directory": "/workspace", "command": "gcc -std=c11 -Wall -Wextra -Werror -O2 -pthread -D_POSIX_C_SOURCE=200809L -D_DEFAULT_SOURCE -I./include -I./src -I. -c src/master.c -o .pvs-objects/master.o", "file": "src/master.c" },
-  { "directory": "/workspace", "command": "gcc -std=c11 -Wall -Wextra -Werror -O2 -pthread -D_POSIX_C_SOURCE=200809L -D_DEFAULT_SOURCE -I./include -I./src -I. -c src/player.c -o .pvs-objects/player.o", "file": "src/player.c" },
-  { "directory": "/workspace", "command": "gcc -std=c11 -Wall -Wextra -Werror -O2 -pthread -D_POSIX_C_SOURCE=200809L -D_DEFAULT_SOURCE -I./include -I./src -I. -c src/player_strategies.c -o .pvs-objects/player_strategies.o", "file": "src/player_strategies.c" },
-  { "directory": "/workspace", "command": "gcc -std=c11 -Wall -Wextra -Werror -O2 -pthread -D_POSIX_C_SOURCE=200809L -D_DEFAULT_SOURCE -I./include -I./src -I. -c src/shared_mem.c -o .pvs-objects/shared_mem.o", "file": "src/shared_mem.c" },
-  { "directory": "/workspace", "command": "gcc -std=c11 -Wall -Wextra -Werror -O2 -pthread -D_POSIX_C_SOURCE=200809L -D_DEFAULT_SOURCE -I./include -I./src -I. -c src/sync_utils.c -o .pvs-objects/sync_utils.o", "file": "src/sync_utils.c" },
-  { "directory": "/workspace", "command": "gcc -std=c11 -Wall -Wextra -Werror -O2 -pthread -D_POSIX_C_SOURCE=200809L -D_DEFAULT_SOURCE -I./include -I./src -I. -c src/view.c -o .pvs-objects/view.o", "file": "src/view.c" }
-]

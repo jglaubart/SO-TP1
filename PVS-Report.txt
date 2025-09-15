@@ -1,7 +1,0 @@
-pvs-studio.com/en/docs/warnings/	1	err	Help: The documentation for all analyzer warnings is available here: https://pvs-studio.com/en/docs/warnings/.
-/workspace/src/master.c	49	warn	V707 Giving short names to global variables is considered to be bad practice. It is suggested to rename 'gs' variable.
-/workspace/src/master.c	50	warn	V707 Giving short names to global variables is considered to be bad practice. It is suggested to rename 'gx' variable.
-/workspace/src/player.c	21	warn	V707 Giving short names to global variables is considered to be bad practice. It is suggested to rename 'gx' variable.
-/workspace/src/player.c	22	warn	V707 Giving short names to global variables is considered to be bad practice. It is suggested to rename 'gs' variable.
-/workspace/src/view.c	19	warn	V707 Giving short names to global variables is considered to be bad practice. It is suggested to rename 'gs' variable.
-/workspace/src/view.c	20	warn	V707 Giving short names to global variables is considered to be bad practice. It is suggested to rename 'gx' variable.
