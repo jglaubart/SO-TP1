@@ -1,17 +1,23 @@
-# Binarios
-master
-player
-view
+# Binarios (están en src/)
+src/master
+src/view
+src/player
 
-# Objetos
-*.o
+# Objetos y temporales de compilación
+src/*.o
 
-# Carpetas temporales
+# Carpetas de editor/build/tests
 .vscode/
 build/
 test/
 
-# Otros
+# Basura del SO / editor
+.DS_Store
 *.log
 *.out
 *.bak
+
+# Historiales locales que no van al repo
+.bash_history
+.bashrc
+.viminfo
